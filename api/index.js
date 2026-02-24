@@ -7,6 +7,7 @@
  *   GET  /health         → Health check (public, no sensitive info)
  *   POST /session        → Minta session token (requires full auth)
  *   GET  /script/:name   → Ambil script terenkripsi (requires full auth)
+ *   GET  /lua/:token     → Loadstring endpoint khusus Roblox executor
  *   POST /admin/reset    → Reset device binding (requires admin key)
  *   POST /admin/revoke   → Revoke API key permanen (requires admin key)
  */
@@ -38,7 +39,7 @@ app.set("trust proxy", 1);
 // ============================================================
 // BODY PARSER
 // ============================================================
-app.use(express.json({ limit: "4kb" })); // Batasi body size
+app.use(express.json({ limit: "4kb" }));
 
 // ============================================================
 // SECURITY HEADERS (semua response)
@@ -46,7 +47,7 @@ app.use(express.json({ limit: "4kb" })); // Batasi body size
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options",            "nosniff");
   res.setHeader("X-Frame-Options",                   "DENY");
-  res.setHeader("X-XSS-Protection",                  "0"); // Modern: biarkan CSP handle
+  res.setHeader("X-XSS-Protection",                  "0");
   res.setHeader("Referrer-Policy",                   "no-referrer");
   res.setHeader("Cache-Control",                     "no-store, no-cache, must-revalidate");
   res.setHeader("Pragma",                            "no-cache");
@@ -54,8 +55,6 @@ app.use((req, res, next) => {
   res.setHeader("Permissions-Policy",                "geolocation=(), camera=(), microphone=()");
   res.setHeader("Strict-Transport-Security",         "max-age=63072000; includeSubDomains; preload");
   res.setHeader("X-Protected-By",                    "Alrect-Protect/2.0");
-
-  // Jangan bocorkan Express
   res.removeHeader("X-Powered-By");
   next();
 });
@@ -88,7 +87,7 @@ const globalLimiter = rateLimit({
   },
 });
 
-// Script endpoint: 15 req/menit per IP (lebih ketat)
+// Script endpoint: 15 req/menit per IP
 const scriptLimiter = rateLimit({
   windowMs:        60 * 1000,
   max:             15,
@@ -122,7 +121,7 @@ const sessionLimiter = rateLimit({
 
 // Admin endpoint: sangat ketat
 const adminLimiter = rateLimit({
-  windowMs:        5 * 60 * 1000, // 5 menit
+  windowMs:        5 * 60 * 1000,
   max:             5,
   standardHeaders: true,
   legacyHeaders:   false,
@@ -133,6 +132,18 @@ const adminLimiter = rateLimit({
       error:   "ADMIN_RATE_LIMITED",
       message: "Admin rate limit exceeded",
     });
+  },
+});
+
+// Lua endpoint: 20 req/menit per IP
+const luaLimiter = rateLimit({
+  windowMs:        60 * 1000,
+  max:             20,
+  standardHeaders: true,
+  legacyHeaders:   false,
+  keyGenerator:    (req) => getClientIp(req),
+  handler:         (req, res) => {
+    res.status(429).type("text/plain").send("-- Rate limited. Try again later.");
   },
 });
 
@@ -149,21 +160,18 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check: minimal info, tidak expose version detail di produksi
+// Health check
 app.get("/health", (req, res) => {
   const isProd = process.env.NODE_ENV === "production";
   res.json({
     status:  "ok",
     service: "Alrect Protect",
-    // Tidak expose version, timestamp, atau info sensitif di produksi
     ...(isProd ? {} : { version: "2.0.0", uptime: process.uptime() }),
   });
 });
 
 // ============================================================
 // SESSION ENDPOINT
-// Client request session token dengan auth penuh.
-// Token ini kemudian dipakai di /script (sekali pakai).
 // ============================================================
 
 app.post("/session", sessionLimiter, authMiddleware, (req, res) => {
@@ -182,7 +190,6 @@ app.post("/session", sessionLimiter, authMiddleware, (req, res) => {
   res.json({
     success: true,
     token,
-    // TTL dalam detik — client tahu kapan token expired
     ttl: parseInt(process.env.SESSION_TTL || "300", 10),
   });
 });
@@ -195,8 +202,6 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
   const { apiKey, deviceFp, nonce, ip } = req.alrect;
   const scriptName = req.params.name;
 
-  // ── Sanitasi nama file ──────────────────────────────────
-  // Hanya izinkan karakter aman: huruf, angka, dash, underscore, titik
   if (!/^[a-zA-Z0-9_\-\.]{1,64}$/.test(scriptName)) {
     return res.status(400).json({
       success: false,
@@ -205,7 +210,6 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
     });
   }
 
-  // Path traversal prevention (double check)
   const vaultDir     = path.resolve(__dirname, "../scripts-vault");
   const safeName     = path.basename(scriptName);
   const scriptPath   = path.resolve(vaultDir, safeName);
@@ -215,7 +219,6 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
     return res.status(403).json({ success: false, error: "PATH_VIOLATION" });
   }
 
-  // ── Cek file ada ─────────────────────────────────────────
   if (!fs.existsSync(scriptPath)) {
     return res.status(404).json({
       success: false,
@@ -224,7 +227,6 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
     });
   }
 
-  // ── Baca dan enkripsi content ─────────────────────────────
   let content;
   try {
     content = fs.readFileSync(scriptPath, "utf-8");
@@ -233,8 +235,6 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
     return res.status(500).json({ success: false, error: "READ_ERROR" });
   }
 
-  // Enkripsi script sebelum dikirim
-  // Key di-derive dari apiKey + nonce (dynamic per request)
   let encrypted;
   try {
     encrypted = encryptScript(content, apiKey, nonce);
@@ -242,16 +242,13 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
     return res.status(500).json({ success: false, error: "ENCRYPT_ERROR" });
   }
 
-  // Log akses berhasil
   logAccess({ ip, apiKey, script: safeName, deviceFp, sessionUsed: false });
 
-  // Kirim response
   res.json({
     success:    true,
     script:     safeName,
     ciphertext: encrypted.ciphertext,
     keyHint:    encrypted.keyHint,
-    // Client perlu nonce untuk derive key yang sama
     nonce,
     encoding:   "base64-xor",
     xorSeed:    parseInt(process.env.SCRIPT_XOR_SEED || "42", 10),
@@ -259,15 +256,75 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
 });
 
 // ============================================================
-// ADMIN ENDPOINTS
-// Dilindungi oleh ADMIN_KEY yang terpisah dari API_KEY biasa.
-// Admin key HANYA boleh ada di env server, tidak di-share ke client.
+// LUA LOADSTRING ENDPOINT — Khusus Roblox Executor
+// Akses: GET /lua/:token
+// Return: plain text Lua script
+// Penggunaan: loadstring(game:HttpGet("URL/lua/TOKEN"))()
 // ============================================================
 
-/**
- * Middleware untuk admin endpoints.
- * Menggunakan ADMIN_KEY yang berbeda dari API_KEY biasa.
- */
+// Daftar token → nama file script di scripts-vault
+// Ganti token sesuai milik kamu
+// Tambah baris baru untuk script tambahan
+const LUA_TOKENS = {
+  "50b51f3ed6666b9ee70ab2c6": "example.lua",
+  // "token_lain": "script_lain.lua",
+};
+
+app.get("/lua/:token", luaLimiter, (req, res) => {
+  const token = req.params.token;
+  const ip    = getClientIp(req);
+
+  // Cek token valid
+  const scriptName = LUA_TOKENS[token];
+  if (!scriptName) {
+    logAttack({
+      ip,
+      apiKey: null,
+      path:   req.path,
+      code:   "LUA_TOKEN_INVALID",
+      reason: "Token tidak valid",
+      ua:     req.headers["user-agent"],
+    });
+    // Return sebagai Lua error bukan HTTP error
+    // agar executor tidak crash aneh-aneh
+    return res.status(200).type("text/plain").send('error("Unauthorized")');
+  }
+
+  // Baca script dari vault
+  const vaultDir   = path.resolve(__dirname, "../scripts-vault");
+  const scriptPath = path.resolve(vaultDir, scriptName);
+
+  // Path traversal check
+  if (!scriptPath.startsWith(vaultDir)) {
+    return res.status(200).type("text/plain").send('error("Unauthorized")');
+  }
+
+  if (!fs.existsSync(scriptPath)) {
+    return res.status(200).type("text/plain").send('error("Script not found")');
+  }
+
+  try {
+    const content = fs.readFileSync(scriptPath, "utf-8");
+
+    logAccess({
+      ip,
+      apiKey:    token.substring(0, 8) + "...",
+      script:    scriptName,
+      deviceFp:  "roblox-executor",
+    });
+
+    // Kirim plain text Lua langsung
+    res.type("text/plain").send(content);
+
+  } catch (err) {
+    res.status(200).type("text/plain").send('error("Internal error")');
+  }
+});
+
+// ============================================================
+// ADMIN ENDPOINTS
+// ============================================================
+
 function adminAuth(req, res, next) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   if (!ADMIN_KEY) {
@@ -294,7 +351,6 @@ function adminAuth(req, res, next) {
   next();
 }
 
-// POST /admin/reset — Reset device binding untuk API key
 app.post("/admin/reset", adminLimiter, adminAuth, (req, res) => {
   const { apiKey } = req.body || {};
 
@@ -308,12 +364,11 @@ app.post("/admin/reset", adminLimiter, adminAuth, (req, res) => {
   res.json({
     success: true,
     message: ok
-      ? `Device binding untuk API key berhasil direset`
-      : `API key tidak ditemukan atau belum punya binding`,
+      ? "Device binding untuk API key berhasil direset"
+      : "API key tidak ditemukan atau belum punya binding",
   });
 });
 
-// POST /admin/revoke — Revoke API key permanen (session ini)
 app.post("/admin/revoke", adminLimiter, adminAuth, (req, res) => {
   const { apiKey } = req.body || {};
 
@@ -330,7 +385,6 @@ app.post("/admin/revoke", adminLimiter, adminAuth, (req, res) => {
   });
 });
 
-// POST /admin/device-info — Lihat info device terdaftar
 app.post("/admin/device-info", adminLimiter, adminAuth, (req, res) => {
   const { apiKey } = req.body || {};
 
@@ -343,9 +397,8 @@ app.post("/admin/device-info", adminLimiter, adminAuth, (req, res) => {
     success: true,
     data: info
       ? {
-          // Mask fingerprint — hanya tampilkan 16 char pertama
-          fingerprint:    info.fingerprint.substring(0, 16) + "...",
-          registeredAt:   info.registeredAt,
+          fingerprint:  info.fingerprint.substring(0, 16) + "...",
+          registeredAt: info.registeredAt,
         }
       : null,
     message: info ? "Device ditemukan" : "Tidak ada device terdaftar untuk API key ini",
