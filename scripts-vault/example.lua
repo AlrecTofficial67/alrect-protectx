@@ -1,1 +1,1 @@
-loadstring(game:HttpGet("https://vss.pandadevelopment.net/virtual/file/23e0cea652a14272"))()
+loadstring(game:HttpGet("https://protected-roblox-scripts.onrender.com/0577460ed1648d2ef77b480369e6bd5e"))()
