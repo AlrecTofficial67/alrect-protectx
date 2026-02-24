@@ -1,312 +1,288 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Alrect Deronic Protect Guard</title>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --green: #00ff41;
-      --red: #ff2244;
-      --red-glow: rgba(255,34,68,0.4);
-      --bg: #000500;
-      --surface: rgba(0,8,0,0.88);
-      --border: rgba(0,255,65,0.2);
-      --text: #c8ffc8;
-      --muted: #4a8a4a;
-    }
-    body {
-      background: var(--bg);
-      color: var(--text);
-      font-family: 'Rajdhani', sans-serif;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 1.5rem;
-      overflow: hidden;
-    }
-    #matrix-canvas {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      z-index: 0;
-      opacity: 0.5;
-    }
-    .scanlines {
-      position: fixed; inset: 0;
-      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
-      z-index: 1; pointer-events: none;
-    }
-    .vignette {
-      position: fixed; inset: 0;
-      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.88) 100%);
-      z-index: 1; pointer-events: none;
-    }
-    .card {
-      position: relative; z-index: 10;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 4px;
-      padding: 2.5rem 2rem;
-      max-width: 560px; width: 100%;
-      text-align: center;
-      backdrop-filter: blur(14px);
-      box-shadow: 0 0 60px rgba(0,255,65,0.05), 0 0 80px rgba(255,34,68,0.07), inset 0 1px 0 rgba(0,255,65,0.08);
-      animation: cardIn 0.8s ease forwards;
-    }
-    @keyframes cardIn {
-      from { opacity:0; transform: translateY(18px) scale(0.97); }
-      to   { opacity:1; transform: translateY(0) scale(1); }
-    }
-    /* Corners */
-    .c-tl,.c-tr,.c-bl,.c-br {
-      position: absolute; width: 18px; height: 18px;
-    }
-    .c-tl { top:-1px; left:-1px;  border-top:2px solid var(--green); border-left:2px solid var(--green); }
-    .c-tr { top:-1px; right:-1px; border-top:2px solid var(--red);   border-right:2px solid var(--red); }
-    .c-bl { bottom:-1px; left:-1px;  border-bottom:2px solid var(--red);   border-left:2px solid var(--red); }
-    .c-br { bottom:-1px; right:-1px; border-bottom:2px solid var(--green); border-right:2px solid var(--green); }
-
-    /* Brand */
-    .brand-header {
-      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-      margin-bottom: 1.8rem; padding-bottom: 1.2rem;
-      border-bottom: 1px solid var(--border);
-    }
-    .brand-header i { color: var(--green); font-size: 1rem; opacity: 0.8; }
-    .brand-title {
-      font-family: 'Orbitron', monospace;
-      font-size: 0.58rem; font-weight: 700;
-      letter-spacing: 0.18em; text-transform: uppercase;
-      color: var(--muted);
-    }
-    .brand-title .hl { color: var(--green); }
-
-    /* Shield */
-    .shield-wrap {
-      position: relative; width: 88px; height: 88px;
-      margin: 0 auto 1.4rem;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .ring1, .ring2 {
-      position: absolute; border-radius: 50%;
-      border: 1px solid rgba(255,34,68,0.3);
-      animation: rp 2.5s ease-in-out infinite;
-    }
-    .ring1 { inset:0; }
-    .ring2 { inset:-9px; animation-delay:0.5s; border-color: rgba(255,34,68,0.15); }
-    @keyframes rp {
-      0%,100% { transform:scale(1); opacity:1; }
-      50%      { transform:scale(1.07); opacity:0.4; }
-    }
-    .shield-inner {
-      width: 68px; height: 68px;
-      background: radial-gradient(circle, rgba(255,34,68,0.13) 0%, rgba(255,34,68,0.02) 70%);
-      border-radius: 50%; border: 1px solid rgba(255,34,68,0.25);
-      display: flex; align-items: center; justify-content: center;
-    }
-    .shield-inner i {
-      font-size: 1.9rem; color: var(--red);
-      filter: drop-shadow(0 0 10px var(--red-glow));
-      animation: flicker 5s ease-in-out infinite;
-    }
-    @keyframes flicker {
-      0%,94%,100%{opacity:1;} 95%{opacity:0.5;} 97%{opacity:1;} 98%{opacity:0.6;}
-    }
-
-    /* Badge */
-    .badge {
-      display: inline-flex; align-items: center; gap: 0.4rem;
-      background: rgba(255,34,68,0.08);
-      border: 1px solid rgba(255,34,68,0.28);
-      border-radius: 2px; padding: 0.22rem 0.7rem;
-      margin-bottom: 1rem;
-    }
-    .badge i { font-size: 0.55rem; color: var(--red); animation: blink 1s step-end infinite; }
-    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
-    .badge span {
-      font-family: 'Share Tech Mono', monospace;
-      font-size: 0.65rem; letter-spacing: 0.2em; color: var(--red);
-    }
-
-    /* Title */
-    h1 {
-      font-family: 'Orbitron', monospace;
-      font-size: clamp(1.2rem, 5vw, 1.65rem);
-      font-weight: 900; color: #fff;
-      margin-bottom: 0.5rem; line-height: 1.2;
-      text-shadow: 0 0 22px rgba(255,34,68,0.45);
-      letter-spacing: 0.04em;
-      position: relative;
-    }
-    h1::before, h1::after {
-      content: attr(data-text);
-      position: absolute; top:0; left:0; right:0; overflow:hidden;
-    }
-    h1::before { color:#ff2244; animation:g1 7s infinite; clip-path:polygon(0 0,100% 0,100% 35%,0 35%); }
-    h1::after  { color:#00ff41; animation:g2 7s infinite; clip-path:polygon(0 65%,100% 65%,100% 100%,0 100%); }
-    @keyframes g1 { 0%,90%,100%{opacity:0;transform:none;} 92%{opacity:.6;transform:translateX(-3px);} 94%{opacity:.6;transform:translateX(3px);} 96%{opacity:0;} }
-    @keyframes g2 { 0%,91%,100%{opacity:0;transform:none;} 93%{opacity:.5;transform:translateX(3px);}  95%{opacity:.5;transform:translateX(-3px);} 97%{opacity:0;} }
-
-    .subtitle { font-size: 0.98rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.8rem; }
-    .subtitle strong { color: var(--green); font-weight: 600; }
-
-    /* Terminal */
-    .terminal {
-      background: rgba(0,0,0,0.55);
-      border: 1px solid rgba(0,255,65,0.1);
-      border-radius: 2px; padding: 0.8rem 1rem;
-      text-align: left; margin-bottom: 1.6rem;
-      font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
-    }
-    .tl { display:flex; gap:0.5rem; margin-bottom:0.28rem; opacity:0; animation: ta 0.3s ease forwards; }
-    .tl:nth-child(1){animation-delay:0.5s}
-    .tl:nth-child(2){animation-delay:0.9s}
-    .tl:nth-child(3){animation-delay:1.3s}
-    .tl:nth-child(4){animation-delay:1.7s}
-    @keyframes ta { from{opacity:0;transform:translateX(-4px);} to{opacity:1;transform:none;} }
-    .tp { color: var(--green); }
-    .tt { color: var(--muted); }
-    .te { color: var(--red); }
-    .tok{ color: var(--green); }
-
-    /* Info box */
-    .info-box {
-      background: rgba(0,255,65,0.025);
-      border: 1px solid rgba(0,255,65,0.1);
-      border-left: 3px solid var(--green);
-      border-radius: 2px; padding: 1rem 1.2rem;
-      text-align: left; margin-bottom: 1.6rem;
-    }
-    .ir { display:flex; align-items:flex-start; gap:0.65rem; margin-bottom:0.55rem; }
-    .ir:last-child { margin-bottom:0; }
-    .ir i { font-size:0.75rem; color:var(--green); margin-top:0.15rem; flex-shrink:0; }
-    .ir p { font-size:0.82rem; color:var(--muted); line-height:1.6; }
-    .ir p strong { color:var(--text); }
-
-    /* Divider */
-    .divider { height:1px; background:linear-gradient(90deg,transparent,var(--border),transparent); margin:1.4rem 0; }
-
-    /* Footer */
-    .footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.4rem; }
-    .fl { font-family:'Share Tech Mono',monospace; font-size:0.65rem; color:var(--muted); }
-    .fl span { color:var(--green); }
-    .fr { font-size:0.7rem; color:var(--muted); }
-    .fr i { color:var(--green); margin-right:0.3rem; }
-  </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ALRECT DERONIC PROTECT GUARD</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<style>
+  :root {
+    --green:  #00ff41;
+    --red:    #ff2244;
+    --yellow: #ffcc00;
+    --dark:   #000500;
+    --card:   rgba(0,10,2,0.92);
+    --border: rgba(0,255,65,0.25);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--dark);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Rajdhani', sans-serif;
+    overflow-x: hidden;
+    position: relative;
+  }
+  #matrix { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; opacity:0.18; }
+  body::before {
+    content:'';
+    position:fixed; inset:0;
+    background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
+    pointer-events:none; z-index:1;
+  }
+  body::after {
+    content:'';
+    position:fixed; inset:0;
+    background: radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.85) 100%);
+    pointer-events:none; z-index:1;
+  }
+  .corner { position:fixed; width:60px; height:60px; z-index:2; }
+  .corner-tl { top:15px; left:15px; border-top:2px solid var(--green); border-left:2px solid var(--green); }
+  .corner-tr { top:15px; right:15px; border-top:2px solid var(--red); border-right:2px solid var(--red); }
+  .corner-bl { bottom:15px; left:15px; border-bottom:2px solid var(--green); border-left:2px solid var(--green); }
+  .corner-br { bottom:15px; right:15px; border-bottom:2px solid var(--red); border-right:2px solid var(--red); }
+  .lang-toggle { position:fixed; top:20px; right:80px; z-index:10; display:flex; gap:6px; }
+  .lang-btn {
+    background:rgba(0,0,0,0.7); border:1px solid var(--border); color:var(--green);
+    font-family:'Share Tech Mono',monospace; font-size:11px; padding:5px 10px;
+    cursor:pointer; border-radius:3px; letter-spacing:1px; transition:all 0.2s;
+  }
+  .lang-btn.active, .lang-btn:hover { background:var(--green); color:#000; border-color:var(--green); }
+  .card {
+    position:relative; z-index:5; background:var(--card); border:1px solid var(--border);
+    border-radius:12px; padding:36px 32px 32px; max-width:520px; width:92%;
+    backdrop-filter:blur(12px);
+    box-shadow:0 0 60px rgba(0,255,65,0.07),0 0 0 1px rgba(0,255,65,0.08);
+    animation:cardIn 0.6s cubic-bezier(.16,1,.3,1);
+  }
+  @keyframes cardIn { from{opacity:0;transform:translateY(30px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
+  .brand { display:flex; align-items:center; gap:10px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border); }
+  .brand i { color:var(--green); font-size:18px; }
+  .brand-text { font-family:'Orbitron',monospace; font-size:11px; font-weight:700; letter-spacing:3px; color:var(--green); text-transform:uppercase; }
+  .brand-text span { color:#fff; }
+  .shield-wrap { display:flex; justify-content:center; margin-bottom:20px; position:relative; }
+  .ring { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); border-radius:50%; border:1px solid; animation:ringPulse 2s ease-out infinite; }
+  .ring1 { width:70px; height:70px; border-color:rgba(255,34,68,0.5); }
+  .ring2 { width:90px; height:90px; border-color:rgba(255,34,68,0.25); animation-delay:0.4s; }
+  @keyframes ringPulse { 0%{transform:translate(-50%,-50%) scale(1);opacity:1} 100%{transform:translate(-50%,-50%) scale(1.4);opacity:0} }
+  .shield-icon { width:56px; height:56px; background:rgba(255,34,68,0.12); border:1.5px solid rgba(255,34,68,0.5); border-radius:50%; display:flex; align-items:center; justify-content:center; position:relative; z-index:1; }
+  .shield-icon i { color:var(--red); font-size:22px; }
+  .badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,34,68,0.1); border:1px solid rgba(255,34,68,0.4); border-radius:20px; padding:4px 12px; font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--red); letter-spacing:1px; margin-bottom:14px; }
+  .badge-dot { width:6px; height:6px; background:var(--red); border-radius:50%; animation:blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .main-title { font-family:'Orbitron',monospace; font-size:clamp(22px,5vw,30px); font-weight:900; color:#fff; margin-bottom:8px; position:relative; animation:flicker 4s infinite; }
+  .main-title::before,.main-title::after { content:attr(data-text); position:absolute; top:0; left:0; right:0; }
+  .main-title::before { color:var(--red); animation:glitch1 3s infinite; clip-path:polygon(0 0,100% 0,100% 45%,0 45%); }
+  .main-title::after  { color:var(--green); animation:glitch2 3s infinite; clip-path:polygon(0 55%,100% 55%,100% 100%,0 100%); }
+  @keyframes glitch1 { 0%,90%,100%{transform:translate(0)} 92%{transform:translate(-2px,1px)} 94%{transform:translate(2px,-1px)} }
+  @keyframes glitch2 { 0%,90%,100%{transform:translate(0)} 93%{transform:translate(2px,1px)} 95%{transform:translate(-2px,-1px)} }
+  @keyframes flicker { 0%,98%,100%{opacity:1} 99%{opacity:0.85} }
+  .subtitle { color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:20px; line-height:1.5; }
+  .terminal { background:rgba(0,0,0,0.6); border:1px solid rgba(0,255,65,0.15); border-radius:6px; padding:12px 14px; margin-bottom:20px; font-family:'Share Tech Mono',monospace; font-size:11px; }
+  .term-line { color:rgba(0,255,65,0.7); line-height:1.8; }
+  .term-line .fail { color:var(--red); }
+  .term-line .ok   { color:var(--green); }
+  .divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
+  .admin-section { text-align:center; margin-bottom:20px; }
+  .admin-question { font-family:'Orbitron',monospace; font-size:13px; color:var(--yellow); letter-spacing:2px; margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-row { display:flex; gap:12px; justify-content:center; }
+  .fake-btn { flex:1; max-width:160px; padding:12px 0; border:none; border-radius:8px; font-family:'Orbitron',monospace; font-size:12px; font-weight:700; letter-spacing:2px; cursor:pointer; position:relative; overflow:hidden; transition:all 0.2s; }
+  .fake-btn:hover { transform:translateY(-2px); filter:brightness(1.2); }
+  .fake-btn:active { transform:scale(0.97); }
+  .btn-yes { background:linear-gradient(135deg,#0a3d1a,#0f5c25); color:var(--green); border:1px solid rgba(0,255,65,0.4); box-shadow:0 0 20px rgba(0,255,65,0.1); }
+  .btn-no  { background:linear-gradient(135deg,#3d0a0a,#5c0f0f); color:var(--red); border:1px solid rgba(255,34,68,0.4); box-shadow:0 0 20px rgba(255,34,68,0.1); }
+  .popup-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:100; align-items:center; justify-content:center; }
+  .popup-overlay.show { display:flex; animation:fadeIn 0.3s ease; }
+  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
+  .popup-box { background:rgba(5,5,5,0.98); border:1px solid var(--red); border-radius:12px; padding:36px 32px; max-width:400px; width:90%; text-align:center; box-shadow:0 0 60px rgba(255,34,68,0.25); animation:popIn 0.4s cubic-bezier(.16,1,.3,1); }
+  @keyframes popIn { from{transform:scale(0.75);opacity:0} to{transform:scale(1);opacity:1} }
+  .popup-icon { font-size:52px; margin-bottom:12px; animation:shake 0.6s ease 0.3s both; }
+  @keyframes shake { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-15deg)} 40%{transform:rotate(15deg)} 60%{transform:rotate(-10deg)} 80%{transform:rotate(10deg)} }
+  .popup-skiddie { font-family:'Orbitron',monospace; font-size:clamp(16px,4vw,22px); font-weight:900; color:var(--red); letter-spacing:2px; margin-bottom:10px; text-shadow:0 0 20px rgba(255,34,68,0.5); }
+  .popup-lol { font-family:'Share Tech Mono',monospace; font-size:15px; color:var(--yellow); margin-bottom:8px; }
+  .popup-izin { font-family:'Rajdhani',sans-serif; font-size:13px; color:rgba(255,255,255,0.35); letter-spacing:4px; margin-bottom:20px; }
+  .countdown-label { font-family:'Share Tech Mono',monospace; font-size:11px; color:rgba(255,255,255,0.4); margin-bottom:8px; letter-spacing:1px; }
+  .countdown-num { font-family:'Orbitron',monospace; font-size:52px; font-weight:900; color:var(--red); text-shadow:0 0 30px rgba(255,34,68,0.6); line-height:1; transition:color 0.5s,text-shadow 0.5s; }
+  .countdown-bar-wrap { width:100%; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:12px; overflow:hidden; }
+  .countdown-bar { height:100%; background:linear-gradient(90deg,var(--red),var(--yellow)); border-radius:2px; width:100%; transition:width 1s linear; }
+  .popup-note { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:16px; color:rgba(255,255,255,0.2); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; }
+  .footer { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
+  .footer-brand { font-family:'Share Tech Mono',monospace; font-size:10px; color:rgba(0,255,65,0.4); letter-spacing:2px; }
+  .footer-secure { display:flex; align-items:center; gap:5px; font-family:'Share Tech Mono',monospace; font-size:10px; color:rgba(255,255,255,0.2); }
+  .footer-secure i { color:var(--green); font-size:9px; }
+</style>
 </head>
 <body>
-  <canvas id="matrix-canvas"></canvas>
-  <div class="scanlines"></div>
-  <div class="vignette"></div>
+<canvas id="matrix"></canvas>
+<div class="corner corner-tl"></div>
+<div class="corner corner-tr"></div>
+<div class="corner corner-bl"></div>
+<div class="corner corner-br"></div>
 
-  <div class="card">
-    <div class="c-tl"></div><div class="c-tr"></div>
-    <div class="c-bl"></div><div class="c-br"></div>
+<div class="lang-toggle">
+  <button class="lang-btn active" onclick="setLang('id')" id="btn-id">ID</button>
+  <button class="lang-btn" onclick="setLang('en')" id="btn-en">EN</button>
+</div>
 
-    <div class="brand-header">
-      <i class="fa-solid fa-shield-halved"></i>
-      <div class="brand-title">
-        <span class="hl">ALRECT</span> DERONIC PROTECT <span class="hl">GUARD</span>
-      </div>
+<div class="card">
+  <div class="brand">
+    <i class="fa-solid fa-shield-halved"></i>
+    <div class="brand-text">ALRECT <span>DERONIC</span> PROTECT GUARD</div>
+  </div>
+  <div class="shield-wrap">
+    <div class="ring ring1"></div>
+    <div class="ring ring2"></div>
+    <div class="shield-icon"><i class="fa-solid fa-lock"></i></div>
+  </div>
+  <div style="text-align:center;margin-bottom:14px">
+    <div class="badge"><span class="badge-dot"></span><span id="txt-badge">ERROR 403 — AKSES TIDAK SAH</span></div>
+    <div class="main-title" id="txt-title" data-text="AKSES DITOLAK">AKSES DITOLAK</div>
+    <div class="subtitle" id="txt-subtitle">Anda tidak memiliki izin mengakses resource ini.<br>Dilindungi oleh <strong style="color:var(--green)">Alrect Deronic Protect Guard</strong>.</div>
+  </div>
+  <div class="terminal">
+    <div class="term-line">$ authenticating request...</div>
+    <div class="term-line">$ <span class="fail">✗ signature_invalid :: HMAC mismatch</span></div>
+    <div class="term-line">$ <span class="fail">✗ access_denied :: 403 Forbidden</span></div>
+    <div class="term-line">$ <span class="ok">⚡ incident logged to audit trail</span></div>
+  </div>
+  <hr class="divider"/>
+  <div class="admin-section">
+    <div class="admin-question">
+      <i class="fa-solid fa-user-shield"></i>
+      <span id="txt-question">Apakah kamu admin?</span>
     </div>
-
-    <div class="shield-wrap">
-      <div class="ring2"></div>
-      <div class="ring1"></div>
-      <div class="shield-inner">
-        <i class="fa-solid fa-lock"></i>
-      </div>
-    </div>
-
-    <div class="badge">
-      <i class="fa-solid fa-circle"></i>
-      <span>ERROR 403 — UNAUTHORIZED ACCESS</span>
-    </div>
-
-    <h1 data-text="AKSES DITOLAK">AKSES DITOLAK</h1>
-    <p class="subtitle">
-      Anda tidak memiliki izin mengakses resource ini.<br/>
-      Dilindungi oleh <strong>Alrect Deronic Protect Guard</strong>.
-    </p>
-
-    <div class="terminal">
-      <div class="tl"><span class="tp">$</span><span class="tt">authenticating request...</span></div>
-      <div class="tl"><span class="tp">$</span><span class="te">✗ signature_invalid :: HMAC mismatch</span></div>
-      <div class="tl"><span class="tp">$</span><span class="te">✗ access_denied :: 403 Forbidden</span></div>
-      <div class="tl"><span class="tp">$</span><span class="tok">⚡ incident logged to audit trail</span></div>
-    </div>
-
-    <div class="info-box">
-      <div class="ir">
-        <i class="fa-solid fa-triangle-exclamation"></i>
-        <p><strong>Mengapa ini terjadi?</strong><br/>
-        Resource ini hanya dapat diakses melalui client resmi yang telah terautentikasi dengan HMAC signature valid dan device fingerprint terdaftar.</p>
-      </div>
-      <div class="ir">
-        <i class="fa-solid fa-eye"></i>
-        <p>Percobaan akses tidak sah ini telah <strong>dicatat dan dilaporkan</strong> ke sistem monitoring Alrect.</p>
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="footer">
-      <div class="fl"><span>ALRECT</span> :: DERONIC :: PROTECT</div>
-      <div class="fr"><i class="fa-solid fa-shield-halved"></i>System Secured</div>
+    <div class="btn-row">
+      <button class="fake-btn btn-yes" onclick="triggerTrap()">
+        <i class="fa-solid fa-check" style="margin-right:6px"></i><span id="txt-yes">YA</span>
+      </button>
+      <button class="fake-btn btn-no" onclick="triggerTrap()">
+        <i class="fa-solid fa-xmark" style="margin-right:6px"></i><span id="txt-no">TIDAK</span>
+      </button>
     </div>
   </div>
+  <div class="footer">
+    <div class="footer-brand">ALRECT::DERONIC::PROTECT</div>
+    <div class="footer-secure"><i class="fa-solid fa-circle-check"></i><span id="txt-secured">Sistem Aman</span></div>
+  </div>
+</div>
 
-  <script>
-    const canvas = document.getElementById('matrix-canvas');
-    const ctx = canvas.getContext('2d');
-    const FS = 14;
-    const CHARS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789ABCDEF<>{}[]/\\|';
+<!-- TRAP POPUP -->
+<div class="popup-overlay" id="trapPopup">
+  <div class="popup-box">
+    <div class="popup-icon">💀</div>
+    <div class="popup-skiddie" id="txt-skiddie">DASAR SKIDDIE</div>
+    <div class="popup-lol" id="txt-lol">LOL LU BUKAN PEMILIKNYA 🤣</div>
+    <div class="popup-izin">#izin</div>
+    <div class="countdown-label" id="txt-cd-label">HALAMAN AKAN DITUTUP DALAM</div>
+    <div class="countdown-num" id="countdown">25</div>
+    <div class="countdown-bar-wrap"><div class="countdown-bar" id="cdBar"></div></div>
+    <div class="popup-note"><i class="fa-solid fa-gamepad"></i><span id="txt-note">DETECTED: NON-AUTHORIZED USER</span></div>
+  </div>
+</div>
 
-    function resize() {
-      canvas.width  = window.innerWidth;
-      canvas.height = window.innerHeight;
+<script>
+// Matrix Rain
+const canvas = document.getElementById('matrix');
+const ctx = canvas.getContext('2d');
+let cols, drops;
+function initMatrix() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  cols = Math.floor(canvas.width / 14);
+  drops = Array(cols).fill(1);
+}
+initMatrix();
+window.addEventListener('resize', initMatrix);
+const chars = "アイウエオカキクケコ0123456789ABCDEF";
+setInterval(() => {
+  ctx.fillStyle = 'rgba(0,5,0,0.05)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.font = '14px Share Tech Mono';
+  for (let i = 0; i < drops.length; i++) {
+    const c = chars[Math.floor(Math.random() * chars.length)];
+    const b = Math.random() > 0.95 ? 255 : 65 + Math.floor(Math.random() * 80);
+    ctx.fillStyle = `rgb(0,${b},${Math.floor(b*0.2)})`;
+    ctx.fillText(c, i*14, drops[i]*14);
+    if (drops[i]*14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    drops[i]++;
+  }
+}, 40);
+
+// Language
+const T = {
+  id: {
+    badge:'ERROR 403 — AKSES TIDAK SAH', title:'AKSES DITOLAK',
+    subtitle:'Anda tidak memiliki izin mengakses resource ini.<br>Dilindungi oleh <strong style="color:var(--green)">Alrect Deronic Protect Guard</strong>.',
+    question:'Apakah kamu admin?', yes:'YA', no:'TIDAK', secured:'Sistem Aman',
+    skiddie:'DASAR SKIDDIE', lol:'LOL LU BUKAN PEMILIKNYA 🤣',
+    cdLabel:'HALAMAN AKAN DITUTUP DALAM', note:'TERDETEKSI: PENGGUNA TIDAK SAH',
+  },
+  en: {
+    badge:'ERROR 403 — UNAUTHORIZED ACCESS', title:'ACCESS DENIED',
+    subtitle:'You do not have permission to access this resource.<br>Protected by <strong style="color:var(--green)">Alrect Deronic Protect Guard</strong>.',
+    question:'Your admin?', yes:'YES', no:'NO', secured:'System Secured',
+    skiddie:"YOU'RE A SKIDDIE", lol:"LOL YOU'RE NOT THE OWNER 🤣",
+    cdLabel:'PAGE WILL CLOSE IN', note:'DETECTED: NON-AUTHORIZED USER',
+  }
+};
+let lang = 'id';
+function setLang(l) {
+  lang = l;
+  const t = T[l];
+  document.getElementById('txt-badge').textContent = t.badge;
+  document.getElementById('txt-title').textContent = t.title;
+  document.getElementById('txt-title').dataset.text = t.title;
+  document.getElementById('txt-subtitle').innerHTML = t.subtitle;
+  document.getElementById('txt-question').textContent = t.question;
+  document.getElementById('txt-yes').textContent = t.yes;
+  document.getElementById('txt-no').textContent = t.no;
+  document.getElementById('txt-secured').textContent = t.secured;
+  document.getElementById('txt-skiddie').textContent = t.skiddie;
+  document.getElementById('txt-lol').textContent = t.lol;
+  document.getElementById('txt-cd-label').textContent = t.cdLabel;
+  document.getElementById('txt-note').textContent = t.note;
+  document.getElementById('btn-id').classList.toggle('active', l==='id');
+  document.getElementById('btn-en').classList.toggle('active', l==='en');
+}
+setLang('id');
+
+// Trap + Countdown
+let cdInterval = null;
+function triggerTrap() {
+  document.getElementById('trapPopup').classList.add('show');
+  let count = 25;
+  const numEl = document.getElementById('countdown');
+  const barEl = document.getElementById('cdBar');
+  numEl.textContent = count;
+  barEl.style.width = '100%';
+  numEl.style.color = 'var(--red)';
+  if (cdInterval) clearInterval(cdInterval);
+  cdInterval = setInterval(() => {
+    count--;
+    numEl.textContent = count;
+    barEl.style.width = (count/25*100)+'%';
+    if (count <= 10) { numEl.style.color='#ff6600'; numEl.style.textShadow='0 0 30px rgba(255,100,0,0.6)'; }
+    if (count <= 5)  { numEl.style.color='#ff0000'; numEl.style.textShadow='0 0 40px rgba(255,0,0,0.9)'; }
+    if (count <= 0) {
+      clearInterval(cdInterval);
+      // Coba tutup tab
+      window.open('', '_self').close();
+      // Fallback: tampil pesan selesai
+      setTimeout(() => {
+        document.querySelector('.popup-box').innerHTML = `
+          <div style="font-size:52px;margin-bottom:16px">🔒</div>
+          <div style="font-family:'Orbitron',monospace;font-size:20px;color:var(--green);letter-spacing:2px;margin-bottom:10px">
+            ${lang==='id'?'SESI BERAKHIR':'SESSION ENDED'}
+          </div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:rgba(255,255,255,0.35);letter-spacing:4px;margin-top:8px">#izin</div>
+        `;
+      }, 400);
     }
-    resize();
-    window.addEventListener('resize', resize);
-
-    let cols  = Math.floor(canvas.width / FS);
-    let drops = Array.from({ length: cols }, () => Math.random() * -50);
-    let spds  = Array.from({ length: cols }, () => 0.3 + Math.random() * 0.8);
-    let bright= Array.from({ length: cols }, () => Math.random() > 0.85);
-
-    function draw() {
-      ctx.fillStyle = 'rgba(0,5,0,0.045)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-      const newCols = Math.floor(canvas.width / FS);
-      while (drops.length < newCols) {
-        drops.push(Math.random() * -50);
-        spds.push(0.3 + Math.random() * 0.8);
-        bright.push(Math.random() > 0.85);
-      }
-
-      ctx.font = FS + "px 'Share Tech Mono', monospace";
-      for (let i = 0; i < newCols; i++) {
-        const c = CHARS[Math.floor(Math.random() * CHARS.length)];
-        const x = i * FS;
-        const y = drops[i] * FS;
-        ctx.fillStyle = bright[i] ? '#ccffcc' : '#00ff41';
-        ctx.fillText(c, x, y);
-        if (y > canvas.height && Math.random() > 0.975) {
-          drops[i] = 0;
-          bright[i] = Math.random() > 0.85;
-          spds[i] = 0.3 + Math.random() * 0.8;
-        }
-        drops[i] += spds[i];
-      }
-    }
-    setInterval(draw, 38);
-  </script>
+  }, 1000);
+}
+</script>
 </body>
 </html>
-
