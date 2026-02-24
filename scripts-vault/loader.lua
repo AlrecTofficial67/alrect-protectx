@@ -26,7 +26,7 @@ local HttpSvc = game:GetService("HttpService")
 -- ============================================================
 local _c = {
     _u = "https://alrect-protectxx.vercel.app/lua/PRIVATE_TOKEN",
-    _s = "LUA_SECRET_DISINI",
+    _s = "a7f3k9x2m5q8w1e4r6t0y3b8",
 }
 
 -- ============================================================
