@@ -3,13 +3,17 @@
  * Alrect Protect v2 — Main Server (Production Hardened)
  *
  * Route overview:
- *   GET  /               → Access Denied HTML (public)
- *   GET  /health         → Health check (public)
- *   POST /session        → Session token (requires full auth)
- *   GET  /script/:name   → Script terenkripsi (requires full auth)
+ *   GET  /               → Access Denied HTML
+ *   GET  /health         → Health check
+ *   POST /session        → Session token
+ *   GET  /script/:name   → Script terenkripsi (full auth)
  *   GET  /lua/:token     → Loadstring endpoint Roblox executor
  *   POST /admin/reset    → Reset device binding
  *   POST /admin/revoke   → Revoke API key
+ *
+ * TOKEN SETUP:
+ *   PUBLIC_TOKEN  → loader.lua  (boleh dishare, tidak ada secret)
+ *   PRIVATE_TOKEN → example.lua (hanya loader yang bisa akses, butuh secret header)
  */
 
 require("dotenv").config();
@@ -20,6 +24,7 @@ validateEnv();
 const express   = require("express");
 const path      = require("path");
 const fs        = require("fs");
+const crypto    = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { authMiddleware, getClientIp, deny } = require("../lib/authMiddleware");
 const { encryptScript } = require("../lib/scriptEncryptor");
@@ -59,7 +64,7 @@ const globalLimiter = rateLimit({
   keyGenerator: (req) => getClientIp(req),
   handler: (req, res) => {
     logAttack({ ip: getClientIp(req), apiKey: req.headers["x-alrect-key"], path: req.path, code: "GLOBAL_RATE_LIMIT", reason: "Global rate limit exceeded", ua: req.headers["user-agent"] });
-    res.status(429).json({ success: false, error: "RATE_LIMITED", message: "Terlalu banyak request" });
+    res.status(429).json({ success: false, error: "RATE_LIMITED" });
   },
 });
 
@@ -100,6 +105,45 @@ const luaLimiter = rateLimit({
 });
 
 app.use(globalLimiter);
+
+// ============================================================
+// HELPER — XOR enkripsi
+// ============================================================
+function xorEncrypt(text, key) {
+  const keyBytes  = Buffer.from(key, "utf-8");
+  const textBytes = Buffer.from(text, "utf-8");
+  const result    = Buffer.alloc(textBytes.length);
+  for (let i = 0; i < textBytes.length; i++) {
+    result[i] = textBytes[i] ^ keyBytes[i % keyBytes.length];
+  }
+  return result.toString("base64");
+}
+
+function deriveKey(secret, token) {
+  return crypto.createHmac("sha256", secret).update(token).digest("hex");
+}
+
+// ============================================================
+// TOKEN MAP
+//
+// PUBLIC_TOKEN  → loader.lua  → tidak butuh secret header
+// PRIVATE_TOKEN → example.lua → WAJIB secret header
+// ============================================================
+const LUA_TOKENS = {
+  // PUBLIC: loadstring(game:HttpGet("URL/lua/PUBLIC_TOKEN"))()
+  // Ganti PUBLIC_TOKEN dengan token yang kamu bagikan ke user
+  "50b51f3ed6666b9ee70ab2c6": {
+    file:    "loader.lua",
+    private: false,        // tidak perlu secret header
+  },
+
+  // PRIVATE: hanya loader yang bisa akses ini (pakai secret header)
+  // Ganti PRIVATE_TOKEN dengan token rahasia yang HANYA ada di loader.lua
+  "a1b2c3d4e5f6a7b8c9d0e1f2": {
+    file:    "example.lua",
+    private: true,         // WAJIB secret header
+  },
+};
 
 // ============================================================
 // PUBLIC ROUTES
@@ -157,82 +201,72 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
   }
 
   let content;
-  try {
-    content = fs.readFileSync(scriptPath, "utf-8");
-  } catch (err) {
-    logAttack({ ip, apiKey, path: req.path, code: "READ_ERROR", reason: err.message, ua: req.headers["user-agent"] });
-    return res.status(500).json({ success: false, error: "READ_ERROR" });
-  }
+  try { content = fs.readFileSync(scriptPath, "utf-8"); }
+  catch (err) { return res.status(500).json({ success: false, error: "READ_ERROR" }); }
 
   let encrypted;
-  try {
-    encrypted = encryptScript(content, apiKey, nonce);
-  } catch (err) {
-    return res.status(500).json({ success: false, error: "ENCRYPT_ERROR" });
-  }
+  try { encrypted = encryptScript(content, apiKey, nonce); }
+  catch (err) { return res.status(500).json({ success: false, error: "ENCRYPT_ERROR" }); }
 
   logAccess({ ip, apiKey, script: safeName, deviceFp, sessionUsed: false });
 
   res.json({
-    success:    true,
-    script:     safeName,
-    ciphertext: encrypted.ciphertext,
-    keyHint:    encrypted.keyHint,
-    nonce,
-    encoding:   "base64-xor",
-    xorSeed:    parseInt(process.env.SCRIPT_XOR_SEED || "42", 10),
+    success: true, script: safeName,
+    ciphertext: encrypted.ciphertext, keyHint: encrypted.keyHint,
+    nonce, encoding: "base64-xor",
+    xorSeed: parseInt(process.env.SCRIPT_XOR_SEED || "42", 10),
   });
 });
 
 // ============================================================
-// LUA LOADSTRING ENDPOINT — Roblox Executor
+// LUA LOADSTRING ENDPOINT
 //
-// Deteksi Roblox dari User-Agent:
-//   Roblox HttpGet → UA mengandung "Roblox" → return plain Lua
-//   Browser biasa  → UA tidak ada "Roblox"  → return Access Denied HTML
+// ALUR:
+// 1. User jalankan: loadstring(game:HttpGet("URL/lua/PUBLIC_TOKEN"))()
+// 2. Server kirim loader.lua (plain text, tidak terenkripsi)
+// 3. loader.lua request ke URL/lua/PRIVATE_TOKEN + secret header
+// 4. Server cek secret header → kirim example.lua TERENKRIPSI
+// 5. loader.lua decrypt dan jalankan script asli
 //
-// Penggunaan: loadstring(game:HttpGet("URL/lua/TOKEN"))()
+// ANTI SETCLIPBOARD:
+// - PUBLIC_TOKEN → hanya dapat loader (bukan script asli)
+// - PRIVATE_TOKEN + secret header → dapat script terenkripsi
+// - Tanpa secret header → ditolak
 // ============================================================
 
-const LUA_TOKENS = {
-  "50b51f3ed6666b9ee70ab2c6": "example.lua",
-  // Tambah token lain di sini:
-  // "token_baru": "script_lain.lua",
-};
-
 app.get("/lua/:token", luaLimiter, (req, res) => {
-  const token = req.params.token;
-  const ip    = getClientIp(req);
-  const ua    = req.headers["user-agent"] || "";
+  const token  = req.params.token;
+  const ip     = getClientIp(req);
+  const ua     = req.headers["user-agent"] || "";
+  const secret = req.headers["x-alrect-secret"] || "";
 
-  // Roblox HttpGet selalu kirim UA mengandung "Roblox"
-  // Browser normal tidak punya kata "Roblox" di UA-nya
+  // ── Cek dari Roblox ────────────────────────────────────────
   const isRoblox = /roblox/i.test(ua);
-
   if (!isRoblox) {
-    // Browser → tampil halaman Access Denied keren
     return res.status(403).sendFile("access-denied.html", {
       root: path.join(__dirname, "../public"),
     });
   }
 
-  // Cek token valid
-  const scriptName = LUA_TOKENS[token];
-  if (!scriptName) {
-    logAttack({
-      ip,
-      apiKey: null,
-      path:   req.path,
-      code:   "LUA_TOKEN_INVALID",
-      reason: "Token tidak valid",
-      ua,
-    });
+  // ── Cek token valid ────────────────────────────────────────
+  const tokenConfig = LUA_TOKENS[token];
+  if (!tokenConfig) {
+    logAttack({ ip, apiKey: null, path: req.path, code: "LUA_TOKEN_INVALID", reason: "Token tidak valid", ua });
     return res.status(200).type("text/plain").send('error("Unauthorized")');
   }
 
-  // Baca script dari vault
+  // ── Cek secret header (hanya untuk token private) ──────────
+  if (tokenConfig.private) {
+    const LUA_SECRET = process.env.LUA_SECRET || "";
+    if (!LUA_SECRET || secret !== LUA_SECRET) {
+      logAttack({ ip, apiKey: null, path: req.path, code: "LUA_SECRET_INVALID", reason: "Secret header salah", ua });
+      return res.status(200).type("text/plain").send('error("Unauthorized")');
+    }
+  }
+
+  // ── Baca script dari vault ─────────────────────────────────
   const vaultDir   = path.resolve(__dirname, "../scripts-vault");
-  const scriptPath = path.resolve(vaultDir, scriptName);
+  const scriptPath = path.resolve(vaultDir, tokenConfig.file);
 
   if (!scriptPath.startsWith(vaultDir) || !fs.existsSync(scriptPath)) {
     return res.status(200).type("text/plain").send('error("Not found")');
@@ -240,13 +274,20 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
 
   try {
     const content = fs.readFileSync(scriptPath, "utf-8");
-    logAccess({
-      ip,
-      apiKey:   token.substring(0, 8) + "...",
-      script:   scriptName,
-      deviceFp: "roblox-executor",
-    });
-    res.type("text/plain").send(content);
+
+    logAccess({ ip, apiKey: token.substring(0, 8) + "...", script: tokenConfig.file, deviceFp: "roblox-executor" });
+
+    if (tokenConfig.private) {
+      // Script private → kirim TERENKRIPSI
+      const LUA_SECRET = process.env.LUA_SECRET || "";
+      const encKey     = deriveKey(LUA_SECRET, token);
+      const encrypted  = xorEncrypt(content, encKey);
+      res.type("application/json").send(JSON.stringify({ d: encrypted }));
+    } else {
+      // Script public (loader) → kirim plain text
+      res.type("text/plain").send(content);
+    }
+
   } catch (err) {
     res.status(200).type("text/plain").send('error("Internal error")');
   }
@@ -258,9 +299,7 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
 
 function adminAuth(req, res, next) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
-  if (!ADMIN_KEY) {
-    return res.status(503).json({ success: false, error: "ADMIN_DISABLED" });
-  }
+  if (!ADMIN_KEY) return res.status(503).json({ success: false, error: "ADMIN_DISABLED" });
   const providedKey = req.headers["x-alrect-admin-key"];
   if (!providedKey || providedKey !== ADMIN_KEY) {
     logAttack({ ip: getClientIp(req), apiKey: null, path: req.path, code: "ADMIN_AUTH_FAILED", reason: "Invalid admin key", ua: req.headers["user-agent"] });
@@ -271,9 +310,7 @@ function adminAuth(req, res, next) {
 
 app.post("/admin/reset", adminLimiter, adminAuth, (req, res) => {
   const { apiKey } = req.body || {};
-  if (!apiKey || typeof apiKey !== "string") {
-    return res.status(400).json({ success: false, error: "API key diperlukan" });
-  }
+  if (!apiKey || typeof apiKey !== "string") return res.status(400).json({ success: false, error: "API key diperlukan" });
   const ok = resetDevice(apiKey);
   logSystem("Device reset", { targetKey: apiKey.substring(0, 8) + "..." });
   res.json({ success: true, message: ok ? "Device binding berhasil direset" : "API key tidak ditemukan" });
@@ -281,9 +318,7 @@ app.post("/admin/reset", adminLimiter, adminAuth, (req, res) => {
 
 app.post("/admin/revoke", adminLimiter, adminAuth, (req, res) => {
   const { apiKey } = req.body || {};
-  if (!apiKey || typeof apiKey !== "string") {
-    return res.status(400).json({ success: false, error: "API key diperlukan" });
-  }
+  if (!apiKey || typeof apiKey !== "string") return res.status(400).json({ success: false, error: "API key diperlukan" });
   revokeKey(apiKey);
   logSystem("API key revoked", { targetKey: apiKey.substring(0, 8) + "..." });
   res.json({ success: true, message: "API key berhasil direvoke." });
@@ -291,9 +326,7 @@ app.post("/admin/revoke", adminLimiter, adminAuth, (req, res) => {
 
 app.post("/admin/device-info", adminLimiter, adminAuth, (req, res) => {
   const { apiKey } = req.body || {};
-  if (!apiKey) {
-    return res.status(400).json({ success: false, error: "API key diperlukan" });
-  }
+  if (!apiKey) return res.status(400).json({ success: false, error: "API key diperlukan" });
   const info = getDeviceInfo(apiKey);
   res.json({
     success: true,
@@ -311,17 +344,11 @@ app.use((req, res) => {
   });
 });
 
-// ============================================================
-// ERROR HANDLER
-// ============================================================
 app.use((err, req, res, next) => {
   console.error("[ERROR]", err.message);
   res.status(500).json({ success: false, error: "INTERNAL_ERROR" });
 });
 
-// ============================================================
-// START
-// ============================================================
 if (require.main === module) {
   app.listen(PORT, () => {
     logSystem("Server started", { port: PORT, env: process.env.NODE_ENV || "development" });
