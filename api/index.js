@@ -4,12 +4,12 @@
  *
  * Route overview:
  *   GET  /               → Access Denied HTML (public)
- *   GET  /health         → Health check (public, no sensitive info)
- *   POST /session        → Minta session token (requires full auth)
- *   GET  /script/:name   → Ambil script terenkripsi (requires full auth)
- *   GET  /lua/:token     → Loadstring endpoint khusus Roblox executor
- *   POST /admin/reset    → Reset device binding (requires admin key)
- *   POST /admin/revoke   → Revoke API key permanen (requires admin key)
+ *   GET  /health         → Health check (public)
+ *   POST /session        → Session token (requires full auth)
+ *   GET  /script/:name   → Script terenkripsi (requires full auth)
+ *   GET  /lua/:token     → Loadstring endpoint Roblox executor
+ *   POST /admin/reset    → Reset device binding
+ *   POST /admin/revoke   → Revoke API key
  */
 
 require("dotenv").config();
@@ -17,13 +17,13 @@ require("dotenv").config();
 const { validateEnv } = require("../lib/envValidator");
 validateEnv();
 
-const express    = require("express");
-const path       = require("path");
-const fs         = require("fs");
-const rateLimit  = require("express-rate-limit");
+const express   = require("express");
+const path      = require("path");
+const fs        = require("fs");
+const rateLimit = require("express-rate-limit");
 const { authMiddleware, getClientIp, deny } = require("../lib/authMiddleware");
-const { encryptScript }  = require("../lib/scriptEncryptor");
-const { createSession }  = require("../lib/sessionManager");
+const { encryptScript } = require("../lib/scriptEncryptor");
+const { createSession } = require("../lib/sessionManager");
 const { resetDevice, revokeKey, getDeviceInfo } = require("../lib/deviceRegistry");
 const { logAccess, logSystem, logAttack } = require("../lib/auditLogger");
 
@@ -37,14 +37,14 @@ app.use(express.json({ limit: "4kb" }));
 // SECURITY HEADERS
 // ============================================================
 app.use((req, res, next) => {
-  res.setHeader("X-Content-Type-Options",   "nosniff");
-  res.setHeader("X-Frame-Options",          "DENY");
-  res.setHeader("X-XSS-Protection",         "0");
-  res.setHeader("Referrer-Policy",          "no-referrer");
-  res.setHeader("Cache-Control",            "no-store, no-cache, must-revalidate");
-  res.setHeader("Pragma",                   "no-cache");
-  res.setHeader("Strict-Transport-Security","max-age=63072000; includeSubDomains; preload");
-  res.setHeader("X-Protected-By",           "Alrect-Protect/2.0");
+  res.setHeader("X-Content-Type-Options",    "nosniff");
+  res.setHeader("X-Frame-Options",           "DENY");
+  res.setHeader("X-XSS-Protection",          "0");
+  res.setHeader("Referrer-Policy",           "no-referrer");
+  res.setHeader("Cache-Control",             "no-store, no-cache, must-revalidate");
+  res.setHeader("Pragma",                    "no-cache");
+  res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
+  res.setHeader("X-Protected-By",            "Alrect-Protect/2.0");
   res.removeHeader("X-Powered-By");
   next();
 });
@@ -68,7 +68,7 @@ const scriptLimiter = rateLimit({
   standardHeaders: true, legacyHeaders: false,
   keyGenerator: (req) => getClientIp(req),
   handler: (req, res) => {
-    res.status(429).json({ success: false, error: "SCRIPT_RATE_LIMITED", message: "Terlalu banyak request script." });
+    res.status(429).json({ success: false, error: "SCRIPT_RATE_LIMITED" });
   },
 });
 
@@ -95,11 +95,6 @@ const luaLimiter = rateLimit({
   standardHeaders: true, legacyHeaders: false,
   keyGenerator: (req) => getClientIp(req),
   handler: (req, res) => {
-    const ua = req.headers["user-agent"] || "";
-    const isBrowser = ua.startsWith("Mozilla/") && !ua.includes("HttpGet") && !/roblox|delta|synapse|krnl|fluxus|codex|arceus|hydrogen/i.test(ua);
-    if (isBrowser) {
-      return res.status(429).sendFile("access-denied.html", { root: path.join(__dirname, "../public") });
-    }
     res.status(429).type("text/plain").send('error("Rate limited")');
   },
 });
@@ -190,9 +185,8 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
 });
 
 // ============================================================
-// LUA LOADSTRING ENDPOINT — Khusus Roblox Executor
-// Browser  → Access Denied HTML
-// Executor → Plain text Lua script
+// LUA LOADSTRING ENDPOINT — Roblox Executor
+// Tidak ada pengecekan browser — langsung return plain Lua
 // Penggunaan: loadstring(game:HttpGet("URL/lua/TOKEN"))()
 // ============================================================
 
@@ -205,15 +199,6 @@ const LUA_TOKENS = {
 app.get("/lua/:token", luaLimiter, (req, res) => {
   const token = req.params.token;
   const ip    = getClientIp(req);
-  const ua    = req.headers["user-agent"] || "";
-
-  // Deteksi browser → tampil halaman Access Denied
-  const isBrowser = /mozilla|chrome|safari|firefox|edge|opera|webkit/i.test(ua);
-  if (isBrowser) {
-    return res.status(403).sendFile("access-denied.html", {
-      root: path.join(__dirname, "../public"),
-    });
-  }
 
   // Cek token valid
   const scriptName = LUA_TOKENS[token];
@@ -224,7 +209,7 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
       path:   req.path,
       code:   "LUA_TOKEN_INVALID",
       reason: "Token tidak valid",
-      ua,
+      ua:     req.headers["user-agent"],
     });
     return res.status(200).type("text/plain").send('error("Unauthorized")');
   }
@@ -239,7 +224,13 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
 
   try {
     const content = fs.readFileSync(scriptPath, "utf-8");
-    logAccess({ ip, apiKey: token.substring(0, 8) + "...", script: scriptName, deviceFp: "roblox-executor" });
+    logAccess({
+      ip,
+      apiKey:   token.substring(0, 8) + "...",
+      script:   scriptName,
+      deviceFp: "roblox-executor",
+    });
+    // Kirim plain text Lua langsung tanpa enkripsi
     res.type("text/plain").send(content);
   } catch (err) {
     res.status(200).type("text/plain").send('error("Internal error")');
