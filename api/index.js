@@ -96,7 +96,7 @@ const luaLimiter = rateLimit({
   keyGenerator: (req) => getClientIp(req),
   handler: (req, res) => {
     const ua = req.headers["user-agent"] || "";
-    const isBrowser = /mozilla|chrome|safari|firefox|edge|opera/i.test(ua);
+    const isBrowser = ua.startsWith("Mozilla/") && !ua.includes("HttpGet") && !/roblox|delta|synapse|krnl|fluxus|codex|arceus|hydrogen/i.test(ua);
     if (isBrowser) {
       return res.status(429).sendFile("access-denied.html", { root: path.join(__dirname, "../public") });
     }
