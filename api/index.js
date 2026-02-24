@@ -186,7 +186,11 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
 
 // ============================================================
 // LUA LOADSTRING ENDPOINT — Roblox Executor
-// Tidak ada pengecekan browser — langsung return plain Lua
+//
+// Deteksi Roblox dari User-Agent:
+//   Roblox HttpGet → UA mengandung "Roblox" → return plain Lua
+//   Browser biasa  → UA tidak ada "Roblox"  → return Access Denied HTML
+//
 // Penggunaan: loadstring(game:HttpGet("URL/lua/TOKEN"))()
 // ============================================================
 
@@ -199,6 +203,18 @@ const LUA_TOKENS = {
 app.get("/lua/:token", luaLimiter, (req, res) => {
   const token = req.params.token;
   const ip    = getClientIp(req);
+  const ua    = req.headers["user-agent"] || "";
+
+  // Roblox HttpGet selalu kirim UA mengandung "Roblox"
+  // Browser normal tidak punya kata "Roblox" di UA-nya
+  const isRoblox = /roblox/i.test(ua);
+
+  if (!isRoblox) {
+    // Browser → tampil halaman Access Denied keren
+    return res.status(403).sendFile("access-denied.html", {
+      root: path.join(__dirname, "../public"),
+    });
+  }
 
   // Cek token valid
   const scriptName = LUA_TOKENS[token];
@@ -209,7 +225,7 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
       path:   req.path,
       code:   "LUA_TOKEN_INVALID",
       reason: "Token tidak valid",
-      ua:     req.headers["user-agent"],
+      ua,
     });
     return res.status(200).type("text/plain").send('error("Unauthorized")');
   }
@@ -230,7 +246,6 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
       script:   scriptName,
       deviceFp: "roblox-executor",
     });
-    // Kirim plain text Lua langsung tanpa enkripsi
     res.type("text/plain").send(content);
   } catch (err) {
     res.status(200).type("text/plain").send('error("Internal error")');
