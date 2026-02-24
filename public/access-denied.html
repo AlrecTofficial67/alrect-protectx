@@ -1,1 +1,312 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Alrect Deronic Protect Guard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --green: #00ff41;
+      --red: #ff2244;
+      --red-glow: rgba(255,34,68,0.4);
+      --bg: #000500;
+      --surface: rgba(0,8,0,0.88);
+      --border: rgba(0,255,65,0.2);
+      --text: #c8ffc8;
+      --muted: #4a8a4a;
+    }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Rajdhani', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+      overflow: hidden;
+    }
+    #matrix-canvas {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: 0;
+      opacity: 0.5;
+    }
+    .scanlines {
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.07) 2px, rgba(0,0,0,0.07) 4px);
+      z-index: 1; pointer-events: none;
+    }
+    .vignette {
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.88) 100%);
+      z-index: 1; pointer-events: none;
+    }
+    .card {
+      position: relative; z-index: 10;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 2.5rem 2rem;
+      max-width: 560px; width: 100%;
+      text-align: center;
+      backdrop-filter: blur(14px);
+      box-shadow: 0 0 60px rgba(0,255,65,0.05), 0 0 80px rgba(255,34,68,0.07), inset 0 1px 0 rgba(0,255,65,0.08);
+      animation: cardIn 0.8s ease forwards;
+    }
+    @keyframes cardIn {
+      from { opacity:0; transform: translateY(18px) scale(0.97); }
+      to   { opacity:1; transform: translateY(0) scale(1); }
+    }
+    /* Corners */
+    .c-tl,.c-tr,.c-bl,.c-br {
+      position: absolute; width: 18px; height: 18px;
+    }
+    .c-tl { top:-1px; left:-1px;  border-top:2px solid var(--green); border-left:2px solid var(--green); }
+    .c-tr { top:-1px; right:-1px; border-top:2px solid var(--red);   border-right:2px solid var(--red); }
+    .c-bl { bottom:-1px; left:-1px;  border-bottom:2px solid var(--red);   border-left:2px solid var(--red); }
+    .c-br { bottom:-1px; right:-1px; border-bottom:2px solid var(--green); border-right:2px solid var(--green); }
+
+    /* Brand */
+    .brand-header {
+      display: flex; align-items: center; justify-content: center; gap: 0.5rem;
+      margin-bottom: 1.8rem; padding-bottom: 1.2rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .brand-header i { color: var(--green); font-size: 1rem; opacity: 0.8; }
+    .brand-title {
+      font-family: 'Orbitron', monospace;
+      font-size: 0.58rem; font-weight: 700;
+      letter-spacing: 0.18em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .brand-title .hl { color: var(--green); }
+
+    /* Shield */
+    .shield-wrap {
+      position: relative; width: 88px; height: 88px;
+      margin: 0 auto 1.4rem;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .ring1, .ring2 {
+      position: absolute; border-radius: 50%;
+      border: 1px solid rgba(255,34,68,0.3);
+      animation: rp 2.5s ease-in-out infinite;
+    }
+    .ring1 { inset:0; }
+    .ring2 { inset:-9px; animation-delay:0.5s; border-color: rgba(255,34,68,0.15); }
+    @keyframes rp {
+      0%,100% { transform:scale(1); opacity:1; }
+      50%      { transform:scale(1.07); opacity:0.4; }
+    }
+    .shield-inner {
+      width: 68px; height: 68px;
+      background: radial-gradient(circle, rgba(255,34,68,0.13) 0%, rgba(255,34,68,0.02) 70%);
+      border-radius: 50%; border: 1px solid rgba(255,34,68,0.25);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .shield-inner i {
+      font-size: 1.9rem; color: var(--red);
+      filter: drop-shadow(0 0 10px var(--red-glow));
+      animation: flicker 5s ease-in-out infinite;
+    }
+    @keyframes flicker {
+      0%,94%,100%{opacity:1;} 95%{opacity:0.5;} 97%{opacity:1;} 98%{opacity:0.6;}
+    }
+
+    /* Badge */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(255,34,68,0.08);
+      border: 1px solid rgba(255,34,68,0.28);
+      border-radius: 2px; padding: 0.22rem 0.7rem;
+      margin-bottom: 1rem;
+    }
+    .badge i { font-size: 0.55rem; color: var(--red); animation: blink 1s step-end infinite; }
+    @keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0;} }
+    .badge span {
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.65rem; letter-spacing: 0.2em; color: var(--red);
+    }
+
+    /* Title */
+    h1 {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(1.2rem, 5vw, 1.65rem);
+      font-weight: 900; color: #fff;
+      margin-bottom: 0.5rem; line-height: 1.2;
+      text-shadow: 0 0 22px rgba(255,34,68,0.45);
+      letter-spacing: 0.04em;
+      position: relative;
+    }
+    h1::before, h1::after {
+      content: attr(data-text);
+      position: absolute; top:0; left:0; right:0; overflow:hidden;
+    }
+    h1::before { color:#ff2244; animation:g1 7s infinite; clip-path:polygon(0 0,100% 0,100% 35%,0 35%); }
+    h1::after  { color:#00ff41; animation:g2 7s infinite; clip-path:polygon(0 65%,100% 65%,100% 100%,0 100%); }
+    @keyframes g1 { 0%,90%,100%{opacity:0;transform:none;} 92%{opacity:.6;transform:translateX(-3px);} 94%{opacity:.6;transform:translateX(3px);} 96%{opacity:0;} }
+    @keyframes g2 { 0%,91%,100%{opacity:0;transform:none;} 93%{opacity:.5;transform:translateX(3px);}  95%{opacity:.5;transform:translateX(-3px);} 97%{opacity:0;} }
+
+    .subtitle { font-size: 0.98rem; color: var(--muted); line-height: 1.6; margin-bottom: 1.8rem; }
+    .subtitle strong { color: var(--green); font-weight: 600; }
+
+    /* Terminal */
+    .terminal {
+      background: rgba(0,0,0,0.55);
+      border: 1px solid rgba(0,255,65,0.1);
+      border-radius: 2px; padding: 0.8rem 1rem;
+      text-align: left; margin-bottom: 1.6rem;
+      font-family: 'Share Tech Mono', monospace; font-size: 0.7rem;
+    }
+    .tl { display:flex; gap:0.5rem; margin-bottom:0.28rem; opacity:0; animation: ta 0.3s ease forwards; }
+    .tl:nth-child(1){animation-delay:0.5s}
+    .tl:nth-child(2){animation-delay:0.9s}
+    .tl:nth-child(3){animation-delay:1.3s}
+    .tl:nth-child(4){animation-delay:1.7s}
+    @keyframes ta { from{opacity:0;transform:translateX(-4px);} to{opacity:1;transform:none;} }
+    .tp { color: var(--green); }
+    .tt { color: var(--muted); }
+    .te { color: var(--red); }
+    .tok{ color: var(--green); }
+
+    /* Info box */
+    .info-box {
+      background: rgba(0,255,65,0.025);
+      border: 1px solid rgba(0,255,65,0.1);
+      border-left: 3px solid var(--green);
+      border-radius: 2px; padding: 1rem 1.2rem;
+      text-align: left; margin-bottom: 1.6rem;
+    }
+    .ir { display:flex; align-items:flex-start; gap:0.65rem; margin-bottom:0.55rem; }
+    .ir:last-child { margin-bottom:0; }
+    .ir i { font-size:0.75rem; color:var(--green); margin-top:0.15rem; flex-shrink:0; }
+    .ir p { font-size:0.82rem; color:var(--muted); line-height:1.6; }
+    .ir p strong { color:var(--text); }
+
+    /* Divider */
+    .divider { height:1px; background:linear-gradient(90deg,transparent,var(--border),transparent); margin:1.4rem 0; }
+
+    /* Footer */
+    .footer { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:0.4rem; }
+    .fl { font-family:'Share Tech Mono',monospace; font-size:0.65rem; color:var(--muted); }
+    .fl span { color:var(--green); }
+    .fr { font-size:0.7rem; color:var(--muted); }
+    .fr i { color:var(--green); margin-right:0.3rem; }
+  </style>
+</head>
+<body>
+  <canvas id="matrix-canvas"></canvas>
+  <div class="scanlines"></div>
+  <div class="vignette"></div>
+
+  <div class="card">
+    <div class="c-tl"></div><div class="c-tr"></div>
+    <div class="c-bl"></div><div class="c-br"></div>
+
+    <div class="brand-header">
+      <i class="fa-solid fa-shield-halved"></i>
+      <div class="brand-title">
+        <span class="hl">ALRECT</span> DERONIC PROTECT <span class="hl">GUARD</span>
+      </div>
+    </div>
+
+    <div class="shield-wrap">
+      <div class="ring2"></div>
+      <div class="ring1"></div>
+      <div class="shield-inner">
+        <i class="fa-solid fa-lock"></i>
+      </div>
+    </div>
+
+    <div class="badge">
+      <i class="fa-solid fa-circle"></i>
+      <span>ERROR 403 — UNAUTHORIZED ACCESS</span>
+    </div>
+
+    <h1 data-text="AKSES DITOLAK">AKSES DITOLAK</h1>
+    <p class="subtitle">
+      Anda tidak memiliki izin mengakses resource ini.<br/>
+      Dilindungi oleh <strong>Alrect Deronic Protect Guard</strong>.
+    </p>
+
+    <div class="terminal">
+      <div class="tl"><span class="tp">$</span><span class="tt">authenticating request...</span></div>
+      <div class="tl"><span class="tp">$</span><span class="te">✗ signature_invalid :: HMAC mismatch</span></div>
+      <div class="tl"><span class="tp">$</span><span class="te">✗ access_denied :: 403 Forbidden</span></div>
+      <div class="tl"><span class="tp">$</span><span class="tok">⚡ incident logged to audit trail</span></div>
+    </div>
+
+    <div class="info-box">
+      <div class="ir">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+        <p><strong>Mengapa ini terjadi?</strong><br/>
+        Resource ini hanya dapat diakses melalui client resmi yang telah terautentikasi dengan HMAC signature valid dan device fingerprint terdaftar.</p>
+      </div>
+      <div class="ir">
+        <i class="fa-solid fa-eye"></i>
+        <p>Percobaan akses tidak sah ini telah <strong>dicatat dan dilaporkan</strong> ke sistem monitoring Alrect.</p>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="footer">
+      <div class="fl"><span>ALRECT</span> :: DERONIC :: PROTECT</div>
+      <div class="fr"><i class="fa-solid fa-shield-halved"></i>System Secured</div>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('matrix-canvas');
+    const ctx = canvas.getContext('2d');
+    const FS = 14;
+    const CHARS = 'アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホ0123456789ABCDEF<>{}[]/\\|';
+
+    function resize() {
+      canvas.width  = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    let cols  = Math.floor(canvas.width / FS);
+    let drops = Array.from({ length: cols }, () => Math.random() * -50);
+    let spds  = Array.from({ length: cols }, () => 0.3 + Math.random() * 0.8);
+    let bright= Array.from({ length: cols }, () => Math.random() > 0.85);
+
+    function draw() {
+      ctx.fillStyle = 'rgba(0,5,0,0.045)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const newCols = Math.floor(canvas.width / FS);
+      while (drops.length < newCols) {
+        drops.push(Math.random() * -50);
+        spds.push(0.3 + Math.random() * 0.8);
+        bright.push(Math.random() > 0.85);
+      }
+
+      ctx.font = FS + "px 'Share Tech Mono', monospace";
+      for (let i = 0; i < newCols; i++) {
+        const c = CHARS[Math.floor(Math.random() * CHARS.length)];
+        const x = i * FS;
+        const y = drops[i] * FS;
+        ctx.fillStyle = bright[i] ? '#ccffcc' : '#00ff41';
+        ctx.fillText(c, x, y);
+        if (y > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+          bright[i] = Math.random() > 0.85;
+          spds[i] = 0.3 + Math.random() * 0.8;
+        }
+        drops[i] += spds[i];
+      }
+    }
+    setInterval(draw, 38);
+  </script>
+</body>
+</html>
 
