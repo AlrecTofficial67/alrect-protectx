@@ -1,6 +1,6 @@
 --[[
     ALRECT DERONIC PROTECT — PUBLIC LOADER
-    loadstring(game:HttpGet("https://alrect-protectxx.vercel.app/lua/50b51f3ed6666b9ee70ab2c6"))()
+    loadstring(game:HttpGet("https://unver-protectx.vercel.app/lua/50b51f3ed6666b9ee70ab2c6"))()
 ]]
 
 if getgenv().AlrectLoaded then return end
@@ -11,8 +11,8 @@ local _load  = load
 local Http   = game:GetService("HttpService")
 
 local _c = {
-    _u = "https://unver-protect.vercel.app/lua/8f52fbb9e0902a389560f691",
-    _s = "8f52fbb9e0902a389560f691",
+    _u = "https://unver-protectx.vercel.app/lua/8f52fbb9e0902a389560f691",
+    _s = "82a7191e04396f88b6f9bc39",
 }
 
 -- BASE64 DECODE
@@ -46,7 +46,7 @@ local function xorDecrypt(encoded, key)
     return table.concat(result)
 end
 
--- DERIVE KEY (harus sama dengan server)
+-- DERIVE KEY
 local function simpleHash(str)
     local h = 5381
     for i = 1, #str do h = (h * 33 + str:byte(i)) % 4294967296 end
@@ -79,7 +79,7 @@ local function run()
     end
 
     if res.StatusCode ~= 200 then
-        warn("[Alrect] HTTP " .. tostring(res.StatusCode) .. " | " .. tostring(res.Body):sub(1,80))
+        warn("[Alrect] HTTP " .. tostring(res.StatusCode) .. " | " .. tostring(res.Body):sub(1,100))
         return
     end
 
