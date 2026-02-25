@@ -1,6 +1,6 @@
 /**
  * api/index.js
- * Alrect Protect v2 â€” Main Server (Production Hardened)
+ * Alrect Protect v2 — Main Server (Production Hardened)
  */
 
 require("dotenv").config();
@@ -11,7 +11,6 @@ validateEnv();
 const express   = require("express");
 const path      = require("path");
 const fs        = require("fs");
-const crypto    = require("crypto");
 const rateLimit = require("express-rate-limit");
 const { authMiddleware, getClientIp, deny } = require("../lib/authMiddleware");
 const { encryptScript } = require("../lib/scriptEncryptor");
@@ -78,40 +77,16 @@ const luaLimiter = rateLimit({
 
 app.use(globalLimiter);
 
-// XOR Encrypt
-function xorEncrypt(text, key) {
-  const keyBytes  = Buffer.from(key, "utf-8");
-  const textBytes = Buffer.from(text, "utf-8");
-  const result    = Buffer.alloc(textBytes.length);
-  for (let i = 0; i < textBytes.length; i++) {
-    result[i] = textBytes[i] ^ keyBytes[i % keyBytes.length];
-  }
-  return result.toString("base64");
-}
-
-function deriveKey(secret, token) {
-  return crypto.createHmac("sha256", secret).update(token).digest("hex");
-}
-
 // ============================================================
 // TOKEN MAP
-// PUBLIC  token â†’ loader.lua  (tidak perlu secret header)
-// PRIVATE token â†’ example.lua (wajib secret header)
+// PUBLIC  → loader.lua  (tidak perlu secret header)
+// PRIVATE → example.lua (wajib secret header, kirim plain text)
 // ============================================================
 const LUA_TOKENS = {
-  // PUBLIC â€” ini yang dishare ke user
-  "50b51f3ed6666b9ee70ab2c6": {
-    file:    "loader.lua",
-    private: false,
-  },
-  // PRIVATE â€” hanya loader yang tahu token ini
-  "8f52fbb9e0902a389560f691": {
-    file:    "example.lua",
-    private: true,
-  },
+  "50b51f3ed6666b9ee70ab2c6": { file: "loader.lua",  private: false },
+  "8f52fbb9e0902a389560f691": { file: "example.lua", private: true  },
 };
 
-// Public routes
 app.get("/", (req, res) => {
   res.status(403).sendFile("access-denied.html", { root: path.join(__dirname, "../public") });
 });
@@ -152,6 +127,9 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
 
 // ============================================================
 // LUA ENDPOINT
+// Browser  → Access Denied HTML
+// Roblox tanpa secret  → Unauthorized
+// Roblox dengan secret → Plain text Lua langsung
 // ============================================================
 app.get("/lua/:token", luaLimiter, (req, res) => {
   const token  = req.params.token;
@@ -159,7 +137,7 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
   const ua     = req.headers["user-agent"] || "";
   const secret = req.headers["x-alrect-secret"] || "";
 
-  // Browser â†’ Access Denied
+  // Browser → Access Denied
   const isRoblox = /roblox/i.test(ua);
   if (!isRoblox) {
     return res.status(403).sendFile("access-denied.html", { root: path.join(__dirname, "../public") });
@@ -191,17 +169,8 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
   try {
     const content = fs.readFileSync(scriptPath, "utf-8");
     logAccess({ ip, apiKey: token.substring(0, 8) + "...", script: tokenConfig.file, deviceFp: "roblox-executor" });
-
-    if (tokenConfig.private) {
-      // Enkripsi response
-      const LUA_SECRET = process.env.LUA_SECRET || "";
-      const encKey     = deriveKey(LUA_SECRET, token);
-      const encrypted  = xorEncrypt(content, encKey);
-      res.type("application/json").send(JSON.stringify({ d: encrypted }));
-    } else {
-      // Plain text untuk loader
-      res.type("text/plain").send(content);
-    }
+    // Kirim plain text langsung — tidak ada enkripsi
+    res.type("text/plain").send(content);
   } catch (err) {
     res.status(200).type("text/plain").send('error("Internal error")');
   }
@@ -254,7 +223,7 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
   app.listen(PORT, () => {
     logSystem("Server started", { port: PORT, env: process.env.NODE_ENV || "development" });
-    console.log(`\nâœ… Alrect Protect v2 berjalan di http://localhost:${PORT}\n`);
+    console.log(`\n✅ Alrect Protect v2 berjalan di http://localhost:${PORT}\n`);
   });
 }
 
