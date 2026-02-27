@@ -1,53 +1,27 @@
 --[[
-    ALRECT DERONIC PROTECT — PUBLIC LOADER
-    loadstring(game:HttpGet("https://unver-protectx.vercel.app/lua/50b51f3ed6666b9ee70ab2c6"))()
+    ALRECT DERONIC PROTECT — LOADER (Delta Compatible)
+    loadstring(game:HttpGet("https://prri-scriptv14.vercel.app/lua/50b51f3ed6666b9ee70ab2c6"))()
 ]]
 
 if getgenv().AlrectLoaded then return end
 getgenv().AlrectLoaded = true
 
-local Http = game:GetService("HttpService")
+local URL = "https://prri-scriptv14.vercel.app/lua/8f52fbb9e0902a389560f691"
 
-local _c = {
-    _u = "https://unver-protectx.vercel.app/lua/8f52fbb9e0902a389560f691",
-    _s = "82a7191e04396f88b6f9bc39",
-}
+local ok, code = pcall(game.HttpGet, game, URL)
 
-local function run()
-    local ok, res = pcall(function()
-        return Http:RequestAsync({
-            Url    = _c._u,
-            Method = "GET",
-            Headers = { ["X-Alrect-Secret"] = _c._s }
-        })
-    end)
-
-    if not ok or not res then
-        warn("[Alrect] Connect error: " .. tostring(res))
-        return
-    end
-
-    if res.StatusCode ~= 200 then
-        warn("[Alrect] HTTP " .. tostring(res.StatusCode) .. " | " .. tostring(res.Body):sub(1, 100))
-        return
-    end
-
-    local code = res.Body
-    if not code or #code == 0 then
-        warn("[Alrect] Response kosong")
-        return
-    end
-
-    local fn, loadErr = load(code)
-    if not fn then
-        warn("[Alrect] Load error: " .. tostring(loadErr))
-        return
-    end
-
-    local ok2, runErr = pcall(fn)
-    if not ok2 then
-        warn("[Alrect] Runtime: " .. tostring(runErr))
-    end
+if not ok or not code or #code == 0 then
+    warn("[Alrect] Gagal download script: " .. tostring(code))
+    return
 end
 
-run()
+local fn, err = load(code)
+if not fn then
+    warn("[Alrect] Load error: " .. tostring(err))
+    return
+end
+
+local ok2, err2 = pcall(fn)
+if not ok2 then
+    warn("[Alrect] Runtime error: " .. tostring(err2))
+end
