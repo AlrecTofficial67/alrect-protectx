@@ -1,10 +1,8 @@
 /**
- * api/index.js
- * Alrect Protect v2 — Main Server (Production Hardened)
+ * api/index.js — Alrect Protect v2
  */
 
 require("dotenv").config();
-
 const { validateEnv } = require("../lib/envValidator");
 validateEnv();
 
@@ -12,7 +10,7 @@ const express   = require("express");
 const path      = require("path");
 const fs        = require("fs");
 const rateLimit = require("express-rate-limit");
-const { authMiddleware, getClientIp, deny } = require("../lib/authMiddleware");
+const { authMiddleware, getClientIp } = require("../lib/authMiddleware");
 const { encryptScript } = require("../lib/scriptEncryptor");
 const { createSession } = require("../lib/sessionManager");
 const { resetDevice, revokeKey, getDeviceInfo } = require("../lib/deviceRegistry");
@@ -38,53 +36,28 @@ app.use((req, res, next) => {
 });
 
 const globalLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 100,
-  standardHeaders: true, legacyHeaders: false,
+  windowMs: 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false,
   keyGenerator: (req) => getClientIp(req),
   handler: (req, res) => {
     logAttack({ ip: getClientIp(req), apiKey: req.headers["x-alrect-key"], path: req.path, code: "GLOBAL_RATE_LIMIT", reason: "Global rate limit exceeded", ua: req.headers["user-agent"] });
     res.status(429).json({ success: false, error: "RATE_LIMITED" });
   },
 });
-
-const scriptLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 15,
-  standardHeaders: true, legacyHeaders: false,
-  keyGenerator: (req) => getClientIp(req),
-  handler: (req, res) => { res.status(429).json({ success: false, error: "SCRIPT_RATE_LIMITED" }); },
-});
-
-const sessionLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 10,
-  standardHeaders: true, legacyHeaders: false,
-  keyGenerator: (req) => getClientIp(req),
-  handler: (req, res) => { res.status(429).json({ success: false, error: "SESSION_RATE_LIMITED" }); },
-});
-
-const adminLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, max: 5,
-  standardHeaders: true, legacyHeaders: false,
-  keyGenerator: (req) => getClientIp(req),
-  handler: (req, res) => { res.status(429).json({ success: false, error: "ADMIN_RATE_LIMITED" }); },
-});
-
-const luaLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 20,
-  standardHeaders: true, legacyHeaders: false,
-  keyGenerator: (req) => getClientIp(req),
-  handler: (req, res) => { res.status(429).type("text/plain").send('error("Rate limited")'); },
-});
+const scriptLimiter  = rateLimit({ windowMs: 60*1000, max: 15,  standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"SCRIPT_RATE_LIMITED"}) });
+const sessionLimiter = rateLimit({ windowMs: 60*1000, max: 10,  standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"SESSION_RATE_LIMITED"}) });
+const adminLimiter   = rateLimit({ windowMs: 5*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"ADMIN_RATE_LIMITED"}) });
+const luaLimiter     = rateLimit({ windowMs: 60*1000, max: 20,  standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).type("text/plain").send('error("Rate limited")') });
 
 app.use(globalLimiter);
 
 // ============================================================
 // TOKEN MAP
-// PUBLIC  → loader.lua  (tidak perlu secret header)
-// PRIVATE → example.lua (wajib secret header, kirim plain text)
+// PUBLIC  → loader.lua  (tidak butuh secret)
+// PRIVATE → example.lua (tidak butuh secret, token sudah jadi proteksi)
 // ============================================================
 const LUA_TOKENS = {
-  "50b51f3ed6666b9ee70ab2c6": { file: "loader.lua",  private: false },
-  "8f52fbb9e0902a389560f691": { file: "example.lua", private: true  },
+  "50b51f3ed6666b9ee70ab2c6": { file: "loader.lua"  },
+  "8f52fbb9e0902a389560f691": { file: "example.lua" },
 };
 
 app.get("/", (req, res) => {
@@ -116,26 +89,22 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
   }
   if (!fs.existsSync(scriptPath)) return res.status(404).json({ success: false, error: "NOT_FOUND" });
   let content;
-  try { content = fs.readFileSync(scriptPath, "utf-8"); }
-  catch (err) { return res.status(500).json({ success: false, error: "READ_ERROR" }); }
+  try { content = fs.readFileSync(scriptPath, "utf-8"); } catch (err) { return res.status(500).json({ success: false, error: "READ_ERROR" }); }
   let encrypted;
-  try { encrypted = encryptScript(content, apiKey, nonce); }
-  catch (err) { return res.status(500).json({ success: false, error: "ENCRYPT_ERROR" }); }
+  try { encrypted = encryptScript(content, apiKey, nonce); } catch (err) { return res.status(500).json({ success: false, error: "ENCRYPT_ERROR" }); }
   logAccess({ ip, apiKey, script: safeName, deviceFp, sessionUsed: false });
   res.json({ success: true, script: safeName, ciphertext: encrypted.ciphertext, keyHint: encrypted.keyHint, nonce, encoding: "base64-xor", xorSeed: parseInt(process.env.SCRIPT_XOR_SEED || "42", 10) });
 });
 
 // ============================================================
-// LUA ENDPOINT
+// LUA ENDPOINT — Delta compatible
 // Browser  → Access Denied HTML
-// Roblox tanpa secret  → Unauthorized
-// Roblox dengan secret → Plain text Lua langsung
+// Roblox   → Plain text Lua (token sudah jadi proteksi)
 // ============================================================
 app.get("/lua/:token", luaLimiter, (req, res) => {
-  const token  = req.params.token;
-  const ip     = getClientIp(req);
-  const ua     = req.headers["user-agent"] || "";
-  const secret = req.headers["x-alrect-secret"] || "";
+  const token = req.params.token;
+  const ip    = getClientIp(req);
+  const ua    = req.headers["user-agent"] || "";
 
   // Browser → Access Denied
   const isRoblox = /roblox/i.test(ua);
@@ -150,15 +119,6 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
     return res.status(200).type("text/plain").send('error("Unauthorized")');
   }
 
-  // Cek secret header untuk token private
-  if (tokenConfig.private) {
-    const LUA_SECRET = process.env.LUA_SECRET || "";
-    if (!LUA_SECRET || secret !== LUA_SECRET) {
-      logAttack({ ip, apiKey: null, path: req.path, code: "LUA_SECRET_INVALID", reason: "Secret header salah", ua });
-      return res.status(200).type("text/plain").send('error("Unauthorized")');
-    }
-  }
-
   // Baca file
   const vaultDir   = path.resolve(__dirname, "../scripts-vault");
   const scriptPath = path.resolve(vaultDir, tokenConfig.file);
@@ -169,7 +129,6 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
   try {
     const content = fs.readFileSync(scriptPath, "utf-8");
     logAccess({ ip, apiKey: token.substring(0, 8) + "...", script: tokenConfig.file, deviceFp: "roblox-executor" });
-    // Kirim plain text langsung — tidak ada enkripsi
     res.type("text/plain").send(content);
   } catch (err) {
     res.status(200).type("text/plain").send('error("Internal error")');
@@ -180,8 +139,8 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
 function adminAuth(req, res, next) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   if (!ADMIN_KEY) return res.status(503).json({ success: false, error: "ADMIN_DISABLED" });
-  const providedKey = req.headers["x-alrect-admin-key"];
-  if (!providedKey || providedKey !== ADMIN_KEY) {
+  const provided = req.headers["x-alrect-admin-key"];
+  if (!provided || provided !== ADMIN_KEY) {
     logAttack({ ip: getClientIp(req), apiKey: null, path: req.path, code: "ADMIN_AUTH_FAILED", reason: "Invalid admin key", ua: req.headers["user-agent"] });
     return res.status(403).json({ success: false, error: "UNAUTHORIZED" });
   }
