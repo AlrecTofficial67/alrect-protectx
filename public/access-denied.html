@@ -3,283 +3,576 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>ALRECT DERONIC PROTECT GUARD</title>
+<title>ALRECT DERONIC PROTECT</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet"/>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
 <style>
-  :root {
-    --green:  #00ff41;
-    --red:    #ff2244;
-    --yellow: #ffcc00;
-    --dark:   #000500;
-    --card:   rgba(0,10,2,0.92);
-    --border: rgba(0,255,65,0.25);
-  }
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--dark);
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: 'Rajdhani', sans-serif;
-    overflow-x: hidden;
-    position: relative;
-  }
-  #matrix { position: fixed; top:0; left:0; width:100%; height:100%; z-index:0; opacity:0.18; }
-  body::before {
-    content:'';
-    position:fixed; inset:0;
-    background: repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.08) 2px,rgba(0,0,0,0.08) 4px);
-    pointer-events:none; z-index:1;
-  }
-  body::after {
-    content:'';
-    position:fixed; inset:0;
-    background: radial-gradient(ellipse at center,transparent 50%,rgba(0,0,0,0.85) 100%);
-    pointer-events:none; z-index:1;
-  }
-  .corner { position:fixed; width:60px; height:60px; z-index:2; }
-  .corner-tl { top:15px; left:15px; border-top:2px solid var(--green); border-left:2px solid var(--green); }
-  .corner-tr { top:15px; right:15px; border-top:2px solid var(--red); border-right:2px solid var(--red); }
-  .corner-bl { bottom:15px; left:15px; border-bottom:2px solid var(--green); border-left:2px solid var(--green); }
-  .corner-br { bottom:15px; right:15px; border-bottom:2px solid var(--red); border-right:2px solid var(--red); }
-  .lang-toggle { position:fixed; top:20px; right:80px; z-index:10; display:flex; gap:6px; }
-  .lang-btn {
-    background:rgba(0,0,0,0.7); border:1px solid var(--border); color:var(--green);
-    font-family:'Share Tech Mono',monospace; font-size:11px; padding:5px 10px;
-    cursor:pointer; border-radius:3px; letter-spacing:1px; transition:all 0.2s;
-  }
-  .lang-btn.active, .lang-btn:hover { background:var(--green); color:#000; border-color:var(--green); }
-  .card {
-    position:relative; z-index:5; background:var(--card); border:1px solid var(--border);
-    border-radius:12px; padding:36px 32px 32px; max-width:520px; width:92%;
-    backdrop-filter:blur(12px);
-    box-shadow:0 0 60px rgba(0,255,65,0.07),0 0 0 1px rgba(0,255,65,0.08);
-    animation:cardIn 0.6s cubic-bezier(.16,1,.3,1);
-  }
-  @keyframes cardIn { from{opacity:0;transform:translateY(30px) scale(0.97)} to{opacity:1;transform:translateY(0) scale(1)} }
-  .brand { display:flex; align-items:center; gap:10px; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border); }
-  .brand i { color:var(--green); font-size:18px; }
-  .brand-text { font-family:'Orbitron',monospace; font-size:11px; font-weight:700; letter-spacing:3px; color:var(--green); text-transform:uppercase; }
-  .brand-text span { color:#fff; }
-  .shield-wrap { display:flex; justify-content:center; margin-bottom:20px; position:relative; }
-  .ring { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); border-radius:50%; border:1px solid; animation:ringPulse 2s ease-out infinite; }
-  .ring1 { width:70px; height:70px; border-color:rgba(255,34,68,0.5); }
-  .ring2 { width:90px; height:90px; border-color:rgba(255,34,68,0.25); animation-delay:0.4s; }
-  @keyframes ringPulse { 0%{transform:translate(-50%,-50%) scale(1);opacity:1} 100%{transform:translate(-50%,-50%) scale(1.4);opacity:0} }
-  .shield-icon { width:56px; height:56px; background:rgba(255,34,68,0.12); border:1.5px solid rgba(255,34,68,0.5); border-radius:50%; display:flex; align-items:center; justify-content:center; position:relative; z-index:1; }
-  .shield-icon i { color:var(--red); font-size:22px; }
-  .badge { display:inline-flex; align-items:center; gap:6px; background:rgba(255,34,68,0.1); border:1px solid rgba(255,34,68,0.4); border-radius:20px; padding:4px 12px; font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--red); letter-spacing:1px; margin-bottom:14px; }
-  .badge-dot { width:6px; height:6px; background:var(--red); border-radius:50%; animation:blink 1s infinite; }
-  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
-  .main-title { font-family:'Orbitron',monospace; font-size:clamp(22px,5vw,30px); font-weight:900; color:#fff; margin-bottom:8px; position:relative; animation:flicker 4s infinite; }
-  .main-title::before,.main-title::after { content:attr(data-text); position:absolute; top:0; left:0; right:0; }
-  .main-title::before { color:var(--red); animation:glitch1 3s infinite; clip-path:polygon(0 0,100% 0,100% 45%,0 45%); }
-  .main-title::after  { color:var(--green); animation:glitch2 3s infinite; clip-path:polygon(0 55%,100% 55%,100% 100%,0 100%); }
-  @keyframes glitch1 { 0%,90%,100%{transform:translate(0)} 92%{transform:translate(-2px,1px)} 94%{transform:translate(2px,-1px)} }
-  @keyframes glitch2 { 0%,90%,100%{transform:translate(0)} 93%{transform:translate(2px,1px)} 95%{transform:translate(-2px,-1px)} }
-  @keyframes flicker { 0%,98%,100%{opacity:1} 99%{opacity:0.85} }
-  .subtitle { color:rgba(255,255,255,0.5); font-size:14px; margin-bottom:20px; line-height:1.5; }
-  .terminal { background:rgba(0,0,0,0.6); border:1px solid rgba(0,255,65,0.15); border-radius:6px; padding:12px 14px; margin-bottom:20px; font-family:'Share Tech Mono',monospace; font-size:11px; }
-  .term-line { color:rgba(0,255,65,0.7); line-height:1.8; }
-  .term-line .fail { color:var(--red); }
-  .term-line .ok   { color:var(--green); }
-  .divider { border:none; border-top:1px solid var(--border); margin:20px 0; }
-  .admin-section { text-align:center; margin-bottom:20px; }
-  .admin-question { font-family:'Orbitron',monospace; font-size:13px; color:var(--yellow); letter-spacing:2px; margin-bottom:14px; display:flex; align-items:center; justify-content:center; gap:8px; }
-  .btn-row { display:flex; gap:12px; justify-content:center; }
-  .fake-btn { flex:1; max-width:160px; padding:12px 0; border:none; border-radius:8px; font-family:'Orbitron',monospace; font-size:12px; font-weight:700; letter-spacing:2px; cursor:pointer; position:relative; overflow:hidden; transition:all 0.2s; }
-  .fake-btn:hover { transform:translateY(-2px); filter:brightness(1.2); }
-  .fake-btn:active { transform:scale(0.97); }
-  .btn-yes { background:linear-gradient(135deg,#0a3d1a,#0f5c25); color:var(--green); border:1px solid rgba(0,255,65,0.4); box-shadow:0 0 20px rgba(0,255,65,0.1); }
-  .btn-no  { background:linear-gradient(135deg,#3d0a0a,#5c0f0f); color:var(--red); border:1px solid rgba(255,34,68,0.4); box-shadow:0 0 20px rgba(255,34,68,0.1); }
-  .popup-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.88); z-index:100; align-items:center; justify-content:center; }
-  .popup-overlay.show { display:flex; animation:fadeIn 0.3s ease; }
-  @keyframes fadeIn { from{opacity:0} to{opacity:1} }
-  .popup-box { background:rgba(5,5,5,0.98); border:1px solid var(--red); border-radius:12px; padding:36px 32px; max-width:400px; width:90%; text-align:center; box-shadow:0 0 60px rgba(255,34,68,0.25); animation:popIn 0.4s cubic-bezier(.16,1,.3,1); }
-  @keyframes popIn { from{transform:scale(0.75);opacity:0} to{transform:scale(1);opacity:1} }
-  .popup-icon { font-size:52px; margin-bottom:12px; animation:shake 0.6s ease 0.3s both; }
-  @keyframes shake { 0%,100%{transform:rotate(0)} 20%{transform:rotate(-15deg)} 40%{transform:rotate(15deg)} 60%{transform:rotate(-10deg)} 80%{transform:rotate(10deg)} }
-  .popup-skiddie { font-family:'Orbitron',monospace; font-size:clamp(16px,4vw,22px); font-weight:900; color:var(--red); letter-spacing:2px; margin-bottom:10px; text-shadow:0 0 20px rgba(255,34,68,0.5); }
-  .popup-lol { font-family:'Share Tech Mono',monospace; font-size:15px; color:var(--yellow); margin-bottom:8px; }
-  .popup-izin { font-family:'Rajdhani',sans-serif; font-size:13px; color:rgba(255,255,255,0.35); letter-spacing:4px; margin-bottom:20px; }
-  .countdown-label { font-family:'Share Tech Mono',monospace; font-size:11px; color:rgba(255,255,255,0.4); margin-bottom:8px; letter-spacing:1px; }
-  .countdown-num { font-family:'Orbitron',monospace; font-size:52px; font-weight:900; color:var(--red); text-shadow:0 0 30px rgba(255,34,68,0.6); line-height:1; transition:color 0.5s,text-shadow 0.5s; }
-  .countdown-bar-wrap { width:100%; height:4px; background:rgba(255,255,255,0.08); border-radius:2px; margin-top:12px; overflow:hidden; }
-  .countdown-bar { height:100%; background:linear-gradient(90deg,var(--red),var(--yellow)); border-radius:2px; width:100%; transition:width 1s linear; }
-  .popup-note { display:flex; align-items:center; justify-content:center; gap:8px; margin-top:16px; color:rgba(255,255,255,0.2); font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; }
-  .footer { margin-top:20px; padding-top:16px; border-top:1px solid var(--border); display:flex; justify-content:space-between; align-items:center; }
-  .footer-brand { font-family:'Share Tech Mono',monospace; font-size:10px; color:rgba(0,255,65,0.4); letter-spacing:2px; }
-  .footer-secure { display:flex; align-items:center; gap:5px; font-family:'Share Tech Mono',monospace; font-size:10px; color:rgba(255,255,255,0.2); }
-  .footer-secure i { color:var(--green); font-size:9px; }
+:root{
+  --bg:#040406;--gray:#8a9ab0;--white:#dde4ed;--accent:#00c8ff;
+  --red:#ff2233;--green:#00e676;--yellow:#ffd740;
+  --dim:rgba(10,14,20,0.95);--border:rgba(138,154,176,0.15);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);min-height:100vh;
+  font-family:'Rajdhani',sans-serif;color:var(--white);
+  overflow-x:hidden;cursor:crosshair;
+}
+
+/* BG CANVAS */
+#cv{position:fixed;inset:0;z-index:0;opacity:0.15;}
+
+/* SCANLINES */
+body::before{
+  content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.07) 2px,rgba(0,0,0,0.07) 4px);
+}
+/* VIGNETTE */
+body::after{
+  content:'';position:fixed;inset:0;z-index:1;pointer-events:none;
+  background:radial-gradient(ellipse at center,transparent 35%,rgba(0,0,0,0.95) 100%);
+}
+
+/* CORNER BRACKETS */
+.br{position:fixed;width:55px;height:55px;z-index:3;}
+.br-tl{top:14px;left:14px;border-top:2px solid var(--accent);border-left:2px solid var(--accent);}
+.br-tr{top:14px;right:14px;border-top:2px solid var(--red);border-right:2px solid var(--red);}
+.br-bl{bottom:14px;left:14px;border-bottom:2px solid var(--gray);border-left:2px solid var(--gray);}
+.br-br{bottom:14px;right:14px;border-bottom:2px solid var(--gray);border-right:2px solid var(--gray);}
+
+/* TOP TICKER */
+.ticker{
+  position:fixed;top:0;left:0;right:0;z-index:10;
+  background:rgba(0,0,0,0.8);border-bottom:1px solid rgba(0,200,255,0.15);
+  padding:6px 0;overflow:hidden;
+}
+.ticker-inner{
+  display:flex;gap:60px;animation:tick 30s linear infinite;
+  white-space:nowrap;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:rgba(0,200,255,0.4);letter-spacing:2px;
+}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+
+/* LANG TOGGLE */
+.lang-bar{position:fixed;top:36px;right:70px;display:flex;gap:6px;z-index:10;}
+.lang-btn{
+  background:rgba(0,0,0,0.7);border:1px solid var(--border);
+  color:var(--gray);font-family:'Share Tech Mono',monospace;
+  font-size:10px;padding:4px 10px;cursor:pointer;border-radius:2px;
+  letter-spacing:1px;transition:all 0.2s;
+}
+.lang-btn.active,.lang-btn:hover{background:var(--accent);color:#000;border-color:var(--accent);}
+
+/* PAGE */
+.page{
+  position:relative;z-index:5;min-height:100vh;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:70px 16px 50px;gap:12px;
+}
+
+/* STATUS BAR */
+.status-bar{
+  width:100%;max-width:600px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:rgba(138,154,176,0.45);letter-spacing:1.5px;
+  margin-bottom:4px;
+}
+.sdot{width:5px;height:5px;border-radius:50%;display:inline-block;margin-right:4px;}
+.sdot-r{background:var(--red);animation:blink 1s infinite;}
+.sdot-g{background:var(--green);}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.1}}
+
+/* CARD */
+.card{
+  width:100%;max-width:600px;
+  background:var(--dim);
+  border:1px solid var(--border);
+  border-radius:3px;padding:30px 26px;
+  backdrop-filter:blur(20px);
+  box-shadow:0 0 0 1px rgba(0,200,255,0.05),0 40px 80px rgba(0,0,0,0.8),inset 0 1px 0 rgba(255,255,255,0.03);
+  animation:cardIn 0.7s cubic-bezier(.16,1,.3,1);
+}
+@keyframes cardIn{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+
+/* CARD HEADER */
+.card-header{
+  display:flex;align-items:center;gap:12px;
+  margin-bottom:22px;padding-bottom:16px;
+  border-bottom:1px solid var(--border);
+}
+.logo-box{
+  width:42px;height:42px;
+  background:rgba(0,200,255,0.07);
+  border:1px solid rgba(0,200,255,0.2);
+  border-radius:3px;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.logo-box i{color:var(--accent);font-size:18px;}
+.hdr-text{flex:1;}
+.hdr-title{
+  font-family:'Orbitron',monospace;font-size:10px;font-weight:700;
+  letter-spacing:3px;color:var(--white);text-transform:uppercase;
+}
+.hdr-sub{
+  font-family:'Share Tech Mono',monospace;font-size:9px;
+  color:rgba(138,154,176,0.4);letter-spacing:1px;margin-top:2px;
+}
+.hat-badges{display:flex;gap:5px;flex-shrink:0;}
+.hat{
+  font-family:'Share Tech Mono',monospace;font-size:8px;
+  letter-spacing:1px;padding:3px 7px;border-radius:2px;
+}
+.hat-g{background:rgba(130,140,150,0.12);color:var(--gray);border:1px solid rgba(130,140,150,0.25);}
+.hat-w{background:rgba(221,228,237,0.06);color:var(--white);border:1px solid rgba(221,228,237,0.15);}
+
+/* SHIELD */
+.shield-wrap{display:flex;justify-content:center;margin-bottom:22px;position:relative;}
+.rings{position:relative;width:110px;height:110px;display:flex;align-items:center;justify-content:center;}
+.ring{position:absolute;border-radius:50%;animation:expand 3s ease-out infinite;}
+.rg1{width:58px;height:58px;border:1px solid rgba(0,200,255,0.5);animation-delay:0s;}
+.rg2{width:78px;height:78px;border:1px solid rgba(0,200,255,0.25);animation-delay:0.6s;}
+.rg3{width:100px;height:100px;border:1px solid rgba(0,200,255,0.1);animation-delay:1.2s;}
+@keyframes expand{0%{transform:scale(0.85);opacity:1}100%{transform:scale(1.4);opacity:0}}
+.shield-core{
+  width:54px;height:54px;
+  background:rgba(255,34,51,0.1);
+  border:1.5px solid rgba(255,34,51,0.45);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;
+  position:relative;z-index:1;
+  box-shadow:0 0 25px rgba(255,34,51,0.12),0 0 60px rgba(255,34,51,0.05);
+}
+.shield-core i{color:var(--red);font-size:22px;}
+
+/* BADGE */
+.badge{
+  display:inline-flex;align-items:center;gap:7px;
+  background:rgba(255,34,51,0.07);
+  border:1px solid rgba(255,34,51,0.3);
+  border-radius:2px;padding:5px 12px;
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  color:var(--red);letter-spacing:1.5px;margin-bottom:10px;
+}
+.pulse{width:5px;height:5px;background:var(--red);border-radius:50%;animation:blink 1s infinite;}
+
+/* TITLE GLITCH */
+.main-title{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(20px,5vw,30px);font-weight:900;
+  color:var(--white);margin-bottom:8px;letter-spacing:2px;
+  position:relative;
+}
+.main-title::before{
+  content:attr(data-text);position:absolute;top:0;left:0;right:0;
+  color:var(--accent);opacity:0;animation:gA 4s infinite;
+  clip-path:polygon(0 25%,100% 25%,100% 55%,0 55%);
+}
+.main-title::after{
+  content:attr(data-text);position:absolute;top:0;left:0;right:0;
+  color:var(--red);opacity:0;animation:gB 4s infinite;
+  clip-path:polygon(0 60%,100% 60%,100% 85%,0 85%);
+}
+@keyframes gA{0%,85%,100%{opacity:0;transform:translate(0)}87%{opacity:0.8;transform:translate(-3px,1px)}89%{opacity:0}}
+@keyframes gB{0%,85%,100%{opacity:0;transform:translate(0)}88%{opacity:0.8;transform:translate(3px,-1px)}90%{opacity:0}}
+
+.subtitle{color:rgba(138,154,176,0.6);font-size:13px;line-height:1.6;margin-bottom:18px;}
+
+/* TERMINAL */
+.terminal{
+  background:rgba(0,0,0,0.55);
+  border:1px solid rgba(0,200,255,0.1);
+  border-left:2px solid var(--accent);
+  border-radius:2px;padding:12px 14px;margin-bottom:18px;
+  font-family:'Share Tech Mono',monospace;font-size:10.5px;
+}
+.tl{color:rgba(138,154,176,0.55);line-height:1.9;}
+.tl .ok{color:var(--green);}
+.tl .fail{color:var(--red);}
+.tl .info{color:var(--accent);}
+
+/* HAT INFO */
+.hat-info{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px;}
+.hat-card{
+  background:rgba(0,0,0,0.4);border:1px solid var(--border);
+  border-radius:2px;padding:12px 13px;
+}
+.hat-card-title{
+  font-family:'Orbitron',monospace;font-size:9px;font-weight:700;
+  letter-spacing:2px;margin-bottom:5px;
+  display:flex;align-items:center;gap:5px;
+}
+.hct-gray{color:var(--gray);}
+.hct-white{color:var(--white);}
+.hat-card p{
+  font-family:'Share Tech Mono',monospace;
+  font-size:9.5px;color:rgba(138,154,176,0.45);line-height:1.5;
+}
+
+/* DIVIDER */
+.div{border:none;border-top:1px solid var(--border);margin:16px 0;}
+
+/* ADMIN TRAP */
+.admin-sec{text-align:center;margin-bottom:18px;}
+.admin-q{
+  font-family:'Orbitron',monospace;font-size:11px;color:var(--yellow);
+  letter-spacing:2px;margin-bottom:12px;
+  display:flex;align-items:center;justify-content:center;gap:7px;
+}
+.btn-row{display:flex;gap:10px;justify-content:center;}
+.fbtn{
+  flex:1;max-width:145px;padding:11px 0;border:none;border-radius:2px;
+  font-family:'Orbitron',monospace;font-size:11px;font-weight:700;
+  letter-spacing:2px;cursor:pointer;transition:all 0.2s;
+}
+.fbtn:hover{transform:translateY(-2px);filter:brightness(1.3);}
+.fbtn:active{transform:scale(0.97);}
+.fbtn-y{background:rgba(0,230,118,0.1);color:var(--green);border:1px solid rgba(0,230,118,0.3);}
+.fbtn-n{background:rgba(255,34,51,0.1);color:var(--red);border:1px solid rgba(255,34,51,0.3);}
+
+/* SOCIALS */
+.socials{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.slink{
+  display:flex;align-items:center;gap:8px;
+  background:rgba(0,0,0,0.35);border:1px solid var(--border);
+  border-radius:2px;padding:9px 12px;
+  text-decoration:none;color:var(--gray);
+  font-family:'Share Tech Mono',monospace;font-size:10px;
+  letter-spacing:0.5px;transition:all 0.2s;
+}
+.slink:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,200,255,0.05);transform:translateY(-1px);}
+.slink i{font-size:13px;width:16px;text-align:center;}
+
+/* CREDITS */
+.credits{
+  background:rgba(0,0,0,0.45);border:1px solid var(--border);
+  border-radius:2px;padding:15px 16px;margin-bottom:18px;
+}
+.credits-title{
+  font-family:'Orbitron',monospace;font-size:9px;color:var(--accent);
+  letter-spacing:3px;margin-bottom:12px;
+  display:flex;align-items:center;gap:7px;
+}
+.cr{
+  display:flex;justify-content:space-between;align-items:baseline;
+  padding:5px 0;border-bottom:1px solid rgba(138,154,176,0.05);
+  font-family:'Share Tech Mono',monospace;font-size:10.5px;
+}
+.cr:last-child{border-bottom:none;}
+.cr-role{color:rgba(138,154,176,0.4);font-size:9.5px;letter-spacing:0.5px;}
+.cr-name{color:var(--white);}
+
+/* FOOTER */
+.footer{
+  display:flex;justify-content:space-between;align-items:center;
+  padding-top:14px;border-top:1px solid var(--border);
+}
+.footer-l{font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(138,154,176,0.25);letter-spacing:2px;}
+.footer-r{display:flex;align-items:center;gap:4px;font-family:'Share Tech Mono',monospace;font-size:9px;color:rgba(138,154,176,0.25);}
+
+/* POPUP */
+.popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.92);z-index:100;align-items:center;justify-content:center;}
+.popup.show{display:flex;animation:fdIn 0.3s;}
+@keyframes fdIn{from{opacity:0}to{opacity:1}}
+.pbox{
+  background:rgba(5,5,7,0.99);
+  border:1px solid rgba(255,34,51,0.5);
+  border-radius:4px;padding:36px 30px;
+  max-width:380px;width:90%;text-align:center;
+  box-shadow:0 0 80px rgba(255,34,51,0.18);
+  animation:pIn 0.4s cubic-bezier(.16,1,.3,1);
+}
+@keyframes pIn{from{transform:scale(0.75);opacity:0}to{transform:scale(1);opacity:1}}
+.picon{font-size:52px;margin-bottom:14px;animation:shake 0.6s ease 0.2s both;}
+@keyframes shake{0%,100%{transform:rotate(0)}20%{transform:rotate(-14deg)}40%{transform:rotate(14deg)}60%{transform:rotate(-9deg)}80%{transform:rotate(9deg)}}
+.pskid{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(14px,4vw,22px);font-weight:900;
+  color:var(--red);letter-spacing:2px;margin-bottom:8px;
+  text-shadow:0 0 25px rgba(255,34,51,0.5);
+}
+.plol{font-family:'Share Tech Mono',monospace;font-size:14px;color:var(--yellow);margin-bottom:6px;}
+.pizin{font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(138,154,176,0.3);letter-spacing:4px;margin-bottom:20px;}
+.cdlabel{font-family:'Share Tech Mono',monospace;font-size:10px;color:rgba(138,154,176,0.35);letter-spacing:1px;margin-bottom:6px;}
+.cdnum{
+  font-family:'Orbitron',monospace;font-size:52px;font-weight:900;
+  color:var(--red);line-height:1;
+  text-shadow:0 0 30px rgba(255,34,51,0.5);
+  transition:color 0.4s,text-shadow 0.4s;
+}
+.cdbar-wrap{width:100%;height:3px;background:rgba(255,255,255,0.05);border-radius:2px;margin-top:12px;overflow:hidden;}
+.cdbar{height:100%;background:linear-gradient(90deg,var(--red),var(--yellow));width:100%;transition:width 1s linear;}
 </style>
 </head>
 <body>
-<canvas id="matrix"></canvas>
-<div class="corner corner-tl"></div>
-<div class="corner corner-tr"></div>
-<div class="corner corner-bl"></div>
-<div class="corner corner-br"></div>
+<canvas id="cv"></canvas>
 
-<div class="lang-toggle">
+<!-- corner brackets -->
+<div class="br br-tl"></div>
+<div class="br br-tr"></div>
+<div class="br br-bl"></div>
+<div class="br br-br"></div>
+
+<!-- ticker -->
+<div class="ticker">
+  <div class="ticker-inner" id="ticker-inner"></div>
+</div>
+
+<!-- lang -->
+<div class="lang-bar">
   <button class="lang-btn active" onclick="setLang('id')" id="btn-id">ID</button>
   <button class="lang-btn" onclick="setLang('en')" id="btn-en">EN</button>
 </div>
 
-<div class="card">
-  <div class="brand">
-    <i class="fa-solid fa-shield-halved"></i>
-    <div class="brand-text">ALRECT <span>DERONIC</span> PROTECT GUARD</div>
+<div class="page">
+  <!-- status bar -->
+  <div class="status-bar">
+    <span><span class="sdot sdot-r"></span><span id="st-t">ANCAMAN TERDETEKSI</span></span>
+    <span id="st-clock">--:--:--</span>
+    <span><span class="sdot sdot-g"></span>SHIELD ACTIVE</span>
   </div>
-  <div class="shield-wrap">
-    <div class="ring ring1"></div>
-    <div class="ring ring2"></div>
-    <div class="shield-icon"><i class="fa-solid fa-lock"></i></div>
-  </div>
-  <div style="text-align:center;margin-bottom:14px">
-    <div class="badge"><span class="badge-dot"></span><span id="txt-badge">ERROR 403 — AKSES TIDAK SAH</span></div>
-    <div class="main-title" id="txt-title" data-text="AKSES DITOLAK">AKSES DITOLAK</div>
-    <div class="subtitle" id="txt-subtitle">Anda tidak memiliki izin mengakses resource ini.<br>Dilindungi oleh <strong style="color:var(--green)">Alrect Deronic Protect Guard</strong>.</div>
-  </div>
-  <div class="terminal">
-    <div class="term-line">$ authenticating request...</div>
-    <div class="term-line">$ <span class="fail">✗ signature_invalid :: HMAC mismatch</span></div>
-    <div class="term-line">$ <span class="fail">✗ access_denied :: 403 Forbidden</span></div>
-    <div class="term-line">$ <span class="ok">⚡ incident logged to audit trail</span></div>
-  </div>
-  <hr class="divider"/>
-  <div class="admin-section">
-    <div class="admin-question">
-      <i class="fa-solid fa-user-shield"></i>
-      <span id="txt-question">Apakah kamu admin?</span>
+
+  <div class="card">
+    <!-- header -->
+    <div class="card-header">
+      <div class="logo-box"><i class="fa-solid fa-shield-halved"></i></div>
+      <div class="hdr-text">
+        <div class="hdr-title">ALRECT DERONIC PROTECT GUARD</div>
+        <div class="hdr-sub">v2.0 · SECURITY LAYER ACTIVE · GRAY HAT + WHITE HAT PROTECT</div>
+      </div>
+      <div class="hat-badges">
+        <span class="hat hat-g">GRAY HAT</span>
+        <span class="hat hat-w">WHITE HAT</span>
+      </div>
     </div>
-    <div class="btn-row">
-      <button class="fake-btn btn-yes" onclick="triggerTrap()">
-        <i class="fa-solid fa-check" style="margin-right:6px"></i><span id="txt-yes">YA</span>
-      </button>
-      <button class="fake-btn btn-no" onclick="triggerTrap()">
-        <i class="fa-solid fa-xmark" style="margin-right:6px"></i><span id="txt-no">TIDAK</span>
-      </button>
+
+    <!-- shield -->
+    <div class="shield-wrap">
+      <div class="rings">
+        <div class="ring rg1"></div>
+        <div class="ring rg2"></div>
+        <div class="ring rg3"></div>
+        <div class="shield-core"><i class="fa-solid fa-lock"></i></div>
+      </div>
     </div>
-  </div>
-  <div class="footer">
-    <div class="footer-brand">ALRECT::DERONIC::PROTECT</div>
-    <div class="footer-secure"><i class="fa-solid fa-circle-check"></i><span id="txt-secured">Sistem Aman</span></div>
+
+    <!-- badge + title -->
+    <div style="text-align:center;margin-bottom:18px">
+      <div class="badge"><span class="pulse"></span><span id="txt-badge">ERROR 403 — AKSES TIDAK SAH</span></div>
+      <div class="main-title" id="txt-title" data-text="AKSES DITOLAK">AKSES DITOLAK</div>
+      <div class="subtitle" id="txt-sub">Anda tidak memiliki izin mengakses resource ini.<br>Dilindungi oleh <strong style="color:var(--accent)">Alrect Deronic Protect Guard</strong>.</div>
+    </div>
+
+    <!-- terminal -->
+    <div class="terminal">
+      <div class="tl">$ <span class="info">initializing security protocol...</span></div>
+      <div class="tl">$ <span class="fail">✗ identity_check :: FAILED — unknown entity</span></div>
+      <div class="tl">$ <span class="fail">✗ access_blocked :: HTTP 403 Forbidden</span></div>
+      <div class="tl">$ <span class="ok">✓ gray_hat + white_hat protection :: ACTIVE</span></div>
+      <div class="tl">$ <span class="ok">✓ incident logged :: audit trail updated</span></div>
+    </div>
+
+    <!-- hat cards -->
+    <div class="hat-info">
+      <div class="hat-card">
+        <div class="hat-card-title hct-gray"><i class="fa-solid fa-user-secret"></i> GRAY HAT</div>
+        <p id="txt-gray">Memantau & menganalisis ancaman dari dalam maupun luar sistem secara aktif.</p>
+      </div>
+      <div class="hat-card">
+        <div class="hat-card-title hct-white"><i class="fa-solid fa-shield-check"></i> WHITE HAT</div>
+        <p id="txt-white">Proteksi etis penuh — sistem hanya memblokir akses tidak sah & melindungi data.</p>
+      </div>
+    </div>
+
+    <hr class="div"/>
+
+    <!-- admin trap -->
+    <div class="admin-sec">
+      <div class="admin-q"><i class="fa-solid fa-user-shield"></i><span id="txt-q">Apakah kamu admin?</span></div>
+      <div class="btn-row">
+        <button class="fbtn fbtn-y" onclick="trap()"><i class="fa-solid fa-check" style="margin-right:5px"></i><span id="txt-yes">YA</span></button>
+        <button class="fbtn fbtn-n" onclick="trap()"><i class="fa-solid fa-xmark" style="margin-right:5px"></i><span id="txt-no">TIDAK</span></button>
+      </div>
+    </div>
+
+    <hr class="div"/>
+
+    <!-- socials -->
+    <div class="socials">
+      <a class="slink" href="https://whatsapp.com/channel/0029Vb5yj26EKyZQEMmRww1B" target="_blank">
+        <i class="fa-brands fa-whatsapp" style="color:#25d366"></i>WhatsApp Channel
+      </a>
+      <a class="slink" href="https://linktr.ee/AlrectProject" target="_blank">
+        <i class="fa-solid fa-link" style="color:var(--accent)"></i>Portofolio
+      </a>
+      <a class="slink" href="https://discord.gg/CQCrevEn" target="_blank">
+        <i class="fa-brands fa-discord" style="color:#5865f2"></i>Discord Team
+      </a>
+      <a class="slink" href="https://t.me/XploterAlrect" target="_blank">
+        <i class="fa-brands fa-telegram" style="color:#29b6f6"></i>Telegram
+      </a>
+    </div>
+
+    <!-- credits -->
+    <div class="credits">
+      <div class="credits-title"><i class="fa-solid fa-code"></i><span id="txt-credit-title">CREDITS & TEAM</span></div>
+      <div class="cr"><span class="cr-role" id="r1">Owner</span><span class="cr-name">ALRECT / ALIP</span></div>
+      <div class="cr"><span class="cr-role" id="r2">Core Developer</span><span class="cr-name">Alrect L. Verdan, aldan, J4ROT</span></div>
+      <div class="cr"><span class="cr-role" id="r3">Dev Script</span><span class="cr-name">aldan, stdvun</span></div>
+      <div class="cr"><span class="cr-role" id="r4">Staff Dev Script</span><span class="cr-name">aldan</span></div>
+      <div class="cr"><span class="cr-role" id="r5">Admin</span><span class="cr-name">DYTON_TXT</span></div>
+      <div class="cr"><span class="cr-role" id="r6">Helper Dev</span><span class="cr-name">J4ROT</span></div>
+    </div>
+
+    <!-- footer -->
+    <div class="footer">
+      <div class="footer-l">ALRECT::DERONIC::PROTECT::GUARD</div>
+      <div class="footer-r"><i class="fa-solid fa-circle-check" style="color:var(--green);font-size:9px"></i><span id="txt-secured">Sistem Aman</span></div>
+    </div>
   </div>
 </div>
 
-<!-- TRAP POPUP -->
-<div class="popup-overlay" id="trapPopup">
-  <div class="popup-box">
-    <div class="popup-icon">💀</div>
-    <div class="popup-skiddie" id="txt-skiddie">DASAR SKIDDIE</div>
-    <div class="popup-lol" id="txt-lol">LOL LU BUKAN PEMILIKNYA 🤣</div>
-    <div class="popup-izin">#izin</div>
-    <div class="countdown-label" id="txt-cd-label">HALAMAN AKAN DITUTUP DALAM</div>
-    <div class="countdown-num" id="countdown">25</div>
-    <div class="countdown-bar-wrap"><div class="countdown-bar" id="cdBar"></div></div>
-    <div class="popup-note"><i class="fa-solid fa-gamepad"></i><span id="txt-note">DETECTED: NON-AUTHORIZED USER</span></div>
+<!-- POPUP TRAP -->
+<div class="popup" id="popupTrap">
+  <div class="pbox">
+    <div class="picon">💀</div>
+    <div class="pskid" id="txt-skid">DASAR SKIDDIE</div>
+    <div class="plol" id="txt-lol">LOL LU BUKAN PEMILIKNYA 🤣</div>
+    <div class="pizin">#izin</div>
+    <div class="cdlabel" id="txt-cdl">HALAMAN AKAN DITUTUP DALAM</div>
+    <div class="cdnum" id="cdNum">25</div>
+    <div class="cdbar-wrap"><div class="cdbar" id="cdBar"></div></div>
   </div>
 </div>
 
 <script>
-// Matrix Rain
-const canvas = document.getElementById('matrix');
-const ctx = canvas.getContext('2d');
+// MATRIX BG
+const cv = document.getElementById('cv');
+const ctx = cv.getContext('2d');
 let cols, drops;
-function initMatrix() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  cols = Math.floor(canvas.width / 14);
+function initCV() {
+  cv.width = window.innerWidth;
+  cv.height = window.innerHeight;
+  cols = Math.floor(cv.width / 15);
   drops = Array(cols).fill(1);
 }
-initMatrix();
-window.addEventListener('resize', initMatrix);
-const chars = "アイウエオカキクケコ0123456789ABCDEF";
+initCV();
+window.addEventListener('resize', initCV);
+const CHARS = "ABCDEF0123456789アイウエオカキクケコ<>{}[]|\\/%$#@!";
 setInterval(() => {
-  ctx.fillStyle = 'rgba(0,5,0,0.05)';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.font = '14px Share Tech Mono';
+  ctx.fillStyle = 'rgba(4,4,6,0.05)';
+  ctx.fillRect(0, 0, cv.width, cv.height);
   for (let i = 0; i < drops.length; i++) {
-    const c = chars[Math.floor(Math.random() * chars.length)];
-    const b = Math.random() > 0.95 ? 255 : 65 + Math.floor(Math.random() * 80);
-    ctx.fillStyle = `rgb(0,${b},${Math.floor(b*0.2)})`;
-    ctx.fillText(c, i*14, drops[i]*14);
-    if (drops[i]*14 > canvas.height && Math.random() > 0.975) drops[i] = 0;
+    const c = CHARS[Math.floor(Math.random() * CHARS.length)];
+    const v = Math.random();
+    if (v > 0.97)      ctx.fillStyle = 'rgba(0,200,255,0.9)';
+    else if (v > 0.90) ctx.fillStyle = 'rgba(220,230,240,0.5)';
+    else               ctx.fillStyle = `rgba(80,100,120,${0.3 + Math.random()*0.3})`;
+    ctx.font = '13px Share Tech Mono';
+    ctx.fillText(c, i * 15, drops[i] * 15);
+    if (drops[i] * 15 > cv.height && Math.random() > 0.975) drops[i] = 0;
     drops[i]++;
   }
 }, 40);
 
-// Language
+// TICKER
+const tickMsg = [
+  'ALRECT DERONIC PROTECT GUARD v2.0',
+  'GRAY HAT PROTECT ACTIVE',
+  'WHITE HAT PROTECT ACTIVE',
+  'ACCESS DENIED :: HTTP 403',
+  'UNAUTHORIZED ACCESS BLOCKED',
+  'SECURITY SYSTEM ONLINE',
+  'INCIDENT LOGGED',
+  'AUDIT TRAIL UPDATED',
+];
+const t = document.getElementById('ticker-inner');
+const full = [...tickMsg, ...tickMsg].map(m => `<span style="margin-right:60px">⬡ ${m}</span>`).join('');
+t.innerHTML = full + full;
+
+// CLOCK
+function clock() {
+  document.getElementById('st-clock').textContent = new Date().toTimeString().slice(0,8);
+}
+clock(); setInterval(clock, 1000);
+
+// LANGUAGE
 const T = {
   id: {
     badge:'ERROR 403 — AKSES TIDAK SAH', title:'AKSES DITOLAK',
-    subtitle:'Anda tidak memiliki izin mengakses resource ini.<br>Dilindungi oleh <strong style="color:var(--green)">Alrect Deronic Protect Guard</strong>.',
-    question:'Apakah kamu admin?', yes:'YA', no:'TIDAK', secured:'Sistem Aman',
-    skiddie:'DASAR SKIDDIE', lol:'LOL LU BUKAN PEMILIKNYA 🤣',
-    cdLabel:'HALAMAN AKAN DITUTUP DALAM', note:'TERDETEKSI: PENGGUNA TIDAK SAH',
+    sub:'Anda tidak memiliki izin mengakses resource ini.<br>Dilindungi oleh <strong style="color:var(--accent)">Alrect Deronic Protect Guard</strong>.',
+    gray:'Memantau & menganalisis ancaman dari dalam maupun luar sistem secara aktif.',
+    white:'Proteksi etis penuh — sistem hanya memblokir akses tidak sah & melindungi data.',
+    q:'Apakah kamu admin?', yes:'YA', no:'TIDAK', secured:'Sistem Aman',
+    ct:'CREDITS & TEAM', threat:'ANCAMAN TERDETEKSI',
+    skid:'DASAR SKIDDIE', lol:'LOL LU BUKAN PEMILIKNYA 🤣',
+    cdl:'HALAMAN AKAN DITUTUP DALAM',
+    r1:'Owner',r2:'Core Developer',r3:'Dev Script',r4:'Staff Dev Script',r5:'Admin',r6:'Helper Dev',
   },
   en: {
     badge:'ERROR 403 — UNAUTHORIZED ACCESS', title:'ACCESS DENIED',
-    subtitle:'You do not have permission to access this resource.<br>Protected by <strong style="color:var(--green)">Alrect Deronic Protect Guard</strong>.',
-    question:'Your admin?', yes:'YES', no:'NO', secured:'System Secured',
-    skiddie:"YOU'RE A SKIDDIE", lol:"LOL YOU'RE NOT THE OWNER 🤣",
-    cdLabel:'PAGE WILL CLOSE IN', note:'DETECTED: NON-AUTHORIZED USER',
+    sub:'You do not have permission to access this resource.<br>Protected by <strong style="color:var(--accent)">Alrect Deronic Protect Guard</strong>.',
+    gray:'Actively monitors & analyzes threats from inside and outside the system.',
+    white:'Full ethical protection — only blocks unauthorized access & protects data.',
+    q:'Are you admin?', yes:'YES', no:'NO', secured:'System Secured',
+    ct:'CREDITS & TEAM', threat:'THREAT DETECTED',
+    skid:"YOU'RE A SKIDDIE", lol:"LOL YOU'RE NOT THE OWNER 🤣",
+    cdl:'PAGE WILL CLOSE IN',
+    r1:'Owner',r2:'Core Developer',r3:'Dev Script',r4:'Staff Dev Script',r5:'Admin',r6:'Helper Dev',
   }
 };
 let lang = 'id';
 function setLang(l) {
   lang = l;
   const t = T[l];
-  document.getElementById('txt-badge').textContent = t.badge;
-  document.getElementById('txt-title').textContent = t.title;
+  document.getElementById('txt-badge').textContent  = t.badge;
+  document.getElementById('txt-title').textContent  = t.title;
   document.getElementById('txt-title').dataset.text = t.title;
-  document.getElementById('txt-subtitle').innerHTML = t.subtitle;
-  document.getElementById('txt-question').textContent = t.question;
-  document.getElementById('txt-yes').textContent = t.yes;
-  document.getElementById('txt-no').textContent = t.no;
-  document.getElementById('txt-secured').textContent = t.secured;
-  document.getElementById('txt-skiddie').textContent = t.skiddie;
-  document.getElementById('txt-lol').textContent = t.lol;
-  document.getElementById('txt-cd-label').textContent = t.cdLabel;
-  document.getElementById('txt-note').textContent = t.note;
+  document.getElementById('txt-sub').innerHTML      = t.sub;
+  document.getElementById('txt-gray').textContent   = t.gray;
+  document.getElementById('txt-white').textContent  = t.white;
+  document.getElementById('txt-q').textContent      = t.q;
+  document.getElementById('txt-yes').textContent    = t.yes;
+  document.getElementById('txt-no').textContent     = t.no;
+  document.getElementById('txt-secured').textContent= t.secured;
+  document.getElementById('txt-credit-title').textContent = t.ct;
+  document.getElementById('st-t').textContent       = t.threat;
+  document.getElementById('txt-skid').textContent   = t.skid;
+  document.getElementById('txt-lol').textContent    = t.lol;
+  document.getElementById('txt-cdl').textContent    = t.cdl;
+  for (let i = 1; i <= 6; i++) document.getElementById('r'+i).textContent = t['r'+i];
   document.getElementById('btn-id').classList.toggle('active', l==='id');
   document.getElementById('btn-en').classList.toggle('active', l==='en');
 }
 setLang('id');
 
-// Trap + Countdown
-let cdInterval = null;
-function triggerTrap() {
-  document.getElementById('trapPopup').classList.add('show');
-  let count = 25;
-  const numEl = document.getElementById('countdown');
-  const barEl = document.getElementById('cdBar');
-  numEl.textContent = count;
-  barEl.style.width = '100%';
-  numEl.style.color = 'var(--red)';
-  if (cdInterval) clearInterval(cdInterval);
-  cdInterval = setInterval(() => {
-    count--;
-    numEl.textContent = count;
-    barEl.style.width = (count/25*100)+'%';
-    if (count <= 10) { numEl.style.color='#ff6600'; numEl.style.textShadow='0 0 30px rgba(255,100,0,0.6)'; }
-    if (count <= 5)  { numEl.style.color='#ff0000'; numEl.style.textShadow='0 0 40px rgba(255,0,0,0.9)'; }
-    if (count <= 0) {
-      clearInterval(cdInterval);
-      // Coba tutup tab
-      window.open('', '_self').close();
-      // Fallback: tampil pesan selesai
+// TRAP
+let cdi = null;
+function trap() {
+  document.getElementById('popupTrap').classList.add('show');
+  let n = 25;
+  const ne = document.getElementById('cdNum');
+  const be = document.getElementById('cdBar');
+  ne.textContent = n; be.style.width = '100%'; ne.style.color = 'var(--red)';
+  if (cdi) clearInterval(cdi);
+  cdi = setInterval(() => {
+    n--;
+    ne.textContent = n;
+    be.style.width = (n/25*100)+'%';
+    if (n <= 10) { ne.style.color='#ff6d00'; ne.style.textShadow='0 0 30px rgba(255,109,0,0.6)'; }
+    if (n <= 5)  { ne.style.color='#ff1744'; ne.style.textShadow='0 0 40px rgba(255,23,68,0.8)'; }
+    if (n <= 0) {
+      clearInterval(cdi);
+      window.open('','_self').close();
       setTimeout(() => {
-        document.querySelector('.popup-box').innerHTML = `
-          <div style="font-size:52px;margin-bottom:16px">🔒</div>
-          <div style="font-family:'Orbitron',monospace;font-size:20px;color:var(--green);letter-spacing:2px;margin-bottom:10px">
+        document.querySelector('.pbox').innerHTML = `
+          <div style="font-size:50px;margin-bottom:14px">🔒</div>
+          <div style="font-family:'Orbitron',monospace;font-size:18px;color:var(--accent);letter-spacing:2px;margin-bottom:8px">
             ${lang==='id'?'SESI BERAKHIR':'SESSION ENDED'}
           </div>
-          <div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:rgba(255,255,255,0.35);letter-spacing:4px;margin-top:8px">#izin</div>
+          <div style="font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(138,154,176,0.3);letter-spacing:4px;margin-top:8px">#izin</div>
         `;
-      }, 400);
+      }, 300);
     }
   }, 1000);
 }
