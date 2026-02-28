@@ -36,30 +36,31 @@ app.use((req, res, next) => {
 });
 
 const globalLimiter = rateLimit({
-  windowMs: 60 * 1000, max: 100, standardHeaders: true, legacyHeaders: false,
+  windowMs: 60*1000, max: 100, standardHeaders: true, legacyHeaders: false,
   keyGenerator: (req) => getClientIp(req),
   handler: (req, res) => {
     logAttack({ ip: getClientIp(req), apiKey: req.headers["x-alrect-key"], path: req.path, code: "GLOBAL_RATE_LIMIT", reason: "Global rate limit exceeded", ua: req.headers["user-agent"] });
     res.status(429).json({ success: false, error: "RATE_LIMITED" });
   },
 });
-const scriptLimiter  = rateLimit({ windowMs: 60*1000, max: 15,  standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"SCRIPT_RATE_LIMITED"}) });
-const sessionLimiter = rateLimit({ windowMs: 60*1000, max: 10,  standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"SESSION_RATE_LIMITED"}) });
-const adminLimiter   = rateLimit({ windowMs: 5*60*1000, max: 5, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"ADMIN_RATE_LIMITED"}) });
-const luaLimiter     = rateLimit({ windowMs: 60*1000, max: 20,  standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).type("text/plain").send('error("Rate limited")') });
+const scriptLimiter  = rateLimit({ windowMs: 60*1000, max: 15,    standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"SCRIPT_RATE_LIMITED"}) });
+const sessionLimiter = rateLimit({ windowMs: 60*1000, max: 10,    standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"SESSION_RATE_LIMITED"}) });
+const adminLimiter   = rateLimit({ windowMs: 5*60*1000, max: 5,   standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).json({success:false,error:"ADMIN_RATE_LIMITED"}) });
+const luaLimiter     = rateLimit({ windowMs: 60*1000, max: 20,    standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => getClientIp(req), handler: (req,res) => res.status(429).type("text/plain").send('error("Rate limited")') });
 
 app.use(globalLimiter);
 
 // ============================================================
-// TOKEN MAP
-// PUBLIC  → loader.lua  (tidak butuh secret)
-// PRIVATE → example.lua (tidak butuh secret, token sudah jadi proteksi)
+// TOKEN MAP — JANGAN DIUBAH
 // ============================================================
 const LUA_TOKENS = {
   "50b51f3ed6666b9ee70ab2c6": { file: "loader.lua"  },
   "8f52fbb9e0902a389560f691": { file: "example.lua" },
 };
 
+// ============================================================
+// PUBLIC ROUTES
+// ============================================================
 app.get("/", (req, res) => {
   res.status(403).sendFile("access-denied.html", { root: path.join(__dirname, "../public") });
 });
@@ -97,9 +98,9 @@ app.get("/script/:name", scriptLimiter, authMiddleware, (req, res) => {
 });
 
 // ============================================================
-// LUA ENDPOINT — Delta compatible
+// LUA ENDPOINT
 // Browser  → Access Denied HTML
-// Roblox   → Plain text Lua (token sudah jadi proteksi)
+// Roblox   → Plain text Lua
 // ============================================================
 app.get("/lua/:token", luaLimiter, (req, res) => {
   const token = req.params.token;
@@ -135,7 +136,9 @@ app.get("/lua/:token", luaLimiter, (req, res) => {
   }
 });
 
-// Admin
+// ============================================================
+// ADMIN ENDPOINTS
+// ============================================================
 function adminAuth(req, res, next) {
   const ADMIN_KEY = process.env.ADMIN_KEY;
   if (!ADMIN_KEY) return res.status(503).json({ success: false, error: "ADMIN_DISABLED" });
@@ -170,6 +173,9 @@ app.post("/admin/device-info", adminLimiter, adminAuth, (req, res) => {
   res.json({ success: true, data: info ? { fingerprint: info.fingerprint.substring(0, 16) + "...", registeredAt: info.registeredAt } : null, message: info ? "Device ditemukan" : "Tidak ada device terdaftar" });
 });
 
+// ============================================================
+// CATCH ALL
+// ============================================================
 app.use((req, res) => {
   res.status(404).sendFile("access-denied.html", { root: path.join(__dirname, "../public") });
 });
